@@ -1,0 +1,17 @@
+block_idx,correct_rejection,false_alarm,hit,is_correct,is_target,letter,miss,mode,n_level,participant,response_key,rt,run_type,session,timestamp,trial_idx
+0,1,0,0,1,0,F,0,pc,1-back,rth,NONE,-1,base,01,13:28:17.649709,0
+0,0,1,0,0,0,P,0,pc,1-back,rth,j,0.2358,base,01,13:28:20.186086,1
+0,0,1,0,0,0,D,0,pc,1-back,rth,j,0.4139,base,01,13:28:22.729070,2
+0,0,0,0,0,1,D,1,pc,1-back,rth,f,0.6797,base,01,13:28:25.262733,3
+0,0,1,0,0,0,M,0,pc,1-back,rth,j,0.3623,base,01,13:28:27.796278,4
+0,0,1,0,0,0,Z,0,pc,1-back,rth,j,0.572,base,01,13:28:30.346210,5
+0,0,1,0,0,0,W,0,pc,1-back,rth,j,0.5104,base,01,13:28:32.879969,6
+0,0,1,0,0,0,S,0,pc,1-back,rth,j,0.4093,base,01,13:28:35.413202,7
+0,0,1,0,0,0,H,0,pc,1-back,rth,j,0.3635,base,01,13:28:37.946976,8
+0,0,0,0,0,1,H,1,pc,1-back,rth,f,0.5343,base,01,13:28:40.480381,9
+0,0,0,0,0,1,H,1,pc,1-back,rth,f,0.6407,base,01,13:28:43.013844,10
+0,0,1,0,0,0,Z,0,pc,1-back,rth,j,0.3631,base,01,13:28:45.547574,11
+0,0,0,1,1,1,Z,0,pc,1-back,rth,j,0.3339,base,01,13:28:48.080863,12
+0,0,1,0,0,0,G,0,pc,1-back,rth,j,0.5044,base,01,13:28:50.614363,13
+0,0,1,0,0,0,Z,0,pc,1-back,rth,j,0.4673,base,01,13:28:53.147336,14
+1,1,0,0,1,0,G,0,pc,2-back,rth,NONE,-1,base,01,13:29:08.735799,0
