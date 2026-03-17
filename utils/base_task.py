@@ -53,9 +53,6 @@ class BaseTask:
         self._init_keyboard()
         self._init_common_stimuli()
 
-    # =================================================================
-    #  QUIT — P0-FIX : signature unique et cohérente
-    # =================================================================
 
     def should_quit(self, force_quit=False):
         """
@@ -81,7 +78,6 @@ class BaseTask:
         if quit_detected:
             self.logger.warn("Quit signal detected. Cleaning up...")
 
-            # P0-FIX: sauvegarde d'urgence avant de quitter
             self._emergency_save()
 
             if self.win:
@@ -131,7 +127,6 @@ class BaseTask:
         """
         if key_list is None:
             return None
-        # set() pour éviter les doublons si escape est déjà dedans
         return list(set(key_list + self.QUIT_KEYS))
 
     def _filter_and_check_quit(self, keys, original_key_list):
@@ -149,14 +144,13 @@ class BaseTask:
         if not keys:
             return keys
 
-        # 1. Quit check
         for k in keys:
             if k.name in self.QUIT_KEYS:
                 self.logger.warn(f"Quit key pressed: {k.name}")
                 self.should_quit(force_quit=True)
-                return []  # Ne sera jamais atteint (core.quit above), sécurité
+                return [] 
 
-        # 2. Filtrer : ne retourner que ce que l'appelant a demandé
+
         if original_key_list is not None:
             keys = [k for k in keys if k.name in original_key_list]
 
@@ -317,7 +311,7 @@ class BaseTask:
                 self.EyeTracker.send_message("REST_END")
 
     # =================================================================
-    #  SAUVEGARDE — P0-FIX : incrémentale + finale
+    #  SAUVEGARDE
     # =================================================================
 
     def _init_incremental_file(self, suffix=""):
@@ -353,7 +347,6 @@ class BaseTask:
             with open(self._incremental_path, 'a', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=sorted(trial_record.keys()))
 
-                # Écrire le header seulement la première fois
                 if not self._incremental_header_written or not file_exists:
                     writer.writeheader()
                     self._incremental_header_written = True

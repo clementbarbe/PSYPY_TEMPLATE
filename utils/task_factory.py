@@ -31,13 +31,11 @@ def create_task(config, win):
         return NBack(
             **base_kwargs,
             run_type=config.get('run_type'),
-            # Listes parallèles (nouvelle API)
-            n_levels=config.get('n_levels', (1, 2, 3)),
-            trials_per_level=config.get('trials_per_level', (15, 15, 15)),
-            blocks_per_level=config.get('blocks_per_level', 3),
-            # Timing
-            stim_duration=config.get('stim_duration', 0.5),
-            isi_duration=config.get('isi_duration', 2.0),
+            design_id=config.get('design_id', 1),
+            block_sequence=config.get('block_sequence', None),
+            rest_duration=config.get('rest_duration', None),
+            stim_duration=config.get('stim_duration', None),
+            isi_duration=config.get('isi_duration', None),
             target_ratio=config.get('target_ratio', 0.33),
         )
 
