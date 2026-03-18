@@ -1,5 +1,6 @@
 from tasks.temporaljudgement import TemporalJudgement
 from tasks.nback import NBack
+from tasks.flanker import Flanker
 
 
 def create_task(config, win):
@@ -37,6 +38,24 @@ def create_task(config, win):
             stim_duration=config.get('stim_duration', None),
             isi_duration=config.get('isi_duration', None),
             target_ratio=config.get('target_ratio', 0.33),
+        )
+    
+    elif task_name == 'Flanker':
+        return Flanker(
+            **base_kwargs,
+            run_type=config.get('run_type', 'base'),
+            design_id=config.get('design_id', 1),
+            block_sequence=config.get('block_sequence', None),
+            paradigm=config.get('paradigm', None),
+            rest_duration=config.get('rest_duration', None),
+            stim_duration=config.get('stim_duration', None),
+            isi_min=config.get('isi_min', None),
+            isi_max=config.get('isi_max', None),
+            inter_block_min=config.get('inter_block_min', None),
+            inter_block_max=config.get('inter_block_max', None),
+            prop_incongruent=config.get('prop_incongruent', 0.5),
+            instruction_duration=config.get('instruction_duration', None),
+            pre_block_fixation=config.get('pre_block_fixation', None),
         )
 
     else:

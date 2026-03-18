@@ -249,48 +249,19 @@ class NBackTab(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        # Scroll area pour tout le contenu
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-
-        content = QWidget()
         layout = QVBoxLayout()
-        content.setLayout(layout)
 
         # ==========================================
-        # DESIGNS PRÉDÉFINIS
+        # DESIGNS (4 BOUTONS DIRECTS)
         # ==========================================
-        design_group = QGroupBox("Designs prédéfinis (fMRI)")
-        design_layout = QVBoxLayout()
+        design_group = QGroupBox("Designs fMRI")
+        design_layout = QGridLayout()
 
-        # Sélecteur de design
-        selector_row = QHBoxLayout()
-        selector_row.addWidget(QLabel("Design :"))
-        self.combo_design = QComboBox()
-        for did, spec in DESIGN_SPECS.items():
-            self.combo_design.addItem(f"Design {did} — {spec['name']}", did)
-        self.combo_design.currentIndexChanged.connect(self._update_design_preview)
-        selector_row.addWidget(self.combo_design)
-        selector_row.addStretch()
-        design_layout.addLayout(selector_row)
-
-        # Preview du design
-        self.design_preview = QTextEdit()
-        self.design_preview.setReadOnly(True)
-        self.design_preview.setMaximumHeight(200)
-        self.design_preview.setFont(QFont("Consolas", 9))
-        self.design_preview.setStyleSheet(
-            "background-color: #1e1e1e; color: #d4d4d4; border: 1px solid #555;"
-        )
-        design_layout.addWidget(self.design_preview)
-
-        # Bouton lancer
-        btn_design = QPushButton("▶  Lancer ce Design")
-        btn_design.setStyleSheet(
-            "QPushButton { padding: 8px; font-weight: bold; }"
-        )
-        btn_design.clicked.connect(self.run_design)
-        design_layout.addWidget(btn_design)
+        for i in range(1, 5):
+            btn = QPushButton(f"▶ Design {i}")
+            btn.setMinimumHeight(40)
+            btn.clicked.connect(lambda _, did=i: self.run_design(did))
+            design_layout.addWidget(btn, (i-1)//2, (i-1)%2)
 
         design_group.setLayout(design_layout)
         layout.addWidget(design_group)
@@ -298,105 +269,59 @@ class NBackTab(QWidget):
         # ==========================================
         # TRAINING
         # ==========================================
-        train_group = QGroupBox("Training (Entraînement)")
+        train_group = QGroupBox("Training")
         train_layout = QVBoxLayout()
 
-        train_layout.addWidget(QLabel(
-            "Mode desktop, séquence simplifiée pour familiarisation."
-        ))
-
-        # Design de training
-        train_design_row = QHBoxLayout()
-        train_design_row.addWidget(QLabel("Basé sur le design :"))
-        self.combo_train_design = QComboBox()
-        self.combo_train_design.addItem("Simplifié (1 bloc/niveau, 8 essais)", 0)
-        for did, spec in DESIGN_SPECS.items():
-            self.combo_train_design.addItem(
-                f"Design {did} (essais réduits)", did
-            )
-        train_design_row.addWidget(self.combo_train_design)
-        train_design_row.addStretch()
-        train_layout.addLayout(train_design_row)
-
-        # Nombre d'essais par bloc (training)
-        train_trials_row = QHBoxLayout()
-        train_trials_row.addWidget(QLabel("Essais par bloc :"))
         self.spin_train_trials = QSpinBox()
         self.spin_train_trials.setRange(3, 30)
         self.spin_train_trials.setValue(8)
-        train_trials_row.addWidget(self.spin_train_trials)
-        train_trials_row.addStretch()
-        train_layout.addLayout(train_trials_row)
 
-        btn_train = QPushButton("▶  Lancer Training")
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Essais par bloc :"))
+        row.addWidget(self.spin_train_trials)
+        row.addStretch()
+
+        train_layout.addLayout(row)
+
+        btn_train = QPushButton("▶ Lancer Training")
         btn_train.clicked.connect(self.run_training)
-        train_layout.addWidget(btn_train)
 
+        train_layout.addWidget(btn_train)
         train_group.setLayout(train_layout)
         layout.addWidget(train_group)
 
         # ==========================================
-        # CUSTOM
+        # CUSTOM BUILDER
         # ==========================================
-        custom_group = QGroupBox("Design personnalisé")
+        custom_group = QGroupBox("Custom Builder")
         custom_layout = QVBoxLayout()
-
-        custom_layout.addWidget(QLabel(
-            "Construisez votre propre séquence de blocs :"
-        ))
 
         self.custom_editor = CustomBlockEditor()
         custom_layout.addWidget(self.custom_editor)
 
-        btn_custom = QPushButton("▶  Lancer Custom")
+        btn_custom = QPushButton("▶ Lancer Custom")
         btn_custom.clicked.connect(self.run_custom)
-        custom_layout.addWidget(btn_custom)
 
+        custom_layout.addWidget(btn_custom)
         custom_group.setLayout(custom_layout)
         layout.addWidget(custom_group)
 
         layout.addStretch()
+        self.setLayout(layout)
 
-        scroll.setWidget(content)
-
-        # Layout principal
-        main_layout = QVBoxLayout()
-        main_layout.addWidget(scroll)
-        self.setLayout(main_layout)
-
-        # Init preview
-        self._update_design_preview()
-
-    # =========================================================================
-    # PREVIEW
-    # =========================================================================
-
-    def _update_design_preview(self):
-        """Met à jour l'aperçu du design sélectionné."""
-        design_id = self.combo_design.currentData()
-        if design_id and design_id in DESIGN_SPECS:
-            self.design_preview.setText(_format_design_summary(design_id))
-
-    # =========================================================================
+    # ==========================================
     # PARAMÈTRES COMMUNS
-    # =========================================================================
-
+    # ==========================================
     def get_common(self):
         return {
             'tache': 'NBack',
             'target_ratio': 0.33,
         }
 
-    # =========================================================================
-    # LANCEURS
-    # =========================================================================
-
-    def run_design(self):
-        """Lance un design prédéfini."""
-        design_id = self.combo_design.currentData()
-        if not design_id:
-            return
-
+    # ==========================================
+    # RUNS
+    # ==========================================
+    def run_design(self, design_id):
         params = self.get_common()
         params.update({
             'run_type': 'base',
@@ -405,38 +330,25 @@ class NBackTab(QWidget):
         self.parent_menu.run_experiment(params)
 
     def run_training(self):
-        """Lance le training."""
-        train_source = self.combo_train_design.currentData()
         n_trials = self.spin_train_trials.value()
 
-        if train_source == 0:
-            # Training simplifié : 1 bloc de chaque niveau basique
-            block_sequence = [
-                {'level': 0, 'n_trials': n_trials},
-                {'level': 1, 'n_trials': n_trials},
-                {'level': 2, 'n_trials': n_trials},
-            ]
-            rest_duration = 5.0
-        else:
-            # Basé sur un design existant mais avec essais réduits
-            spec = DESIGN_SPECS[train_source]
-            block_sequence = [
-                {'level': level, 'n_trials': n_trials}
-                for level, _ in spec['blocks']
-            ]
-            rest_duration = 5.0
+        block_sequence = [
+            {'level': 0, 'n_trials': n_trials},
+            {'level': 1, 'n_trials': n_trials},
+            {'level': 2, 'n_trials': n_trials},
+        ]
 
         params = self.get_common()
         params.update({
             'run_type': 'training',
             'design_id': None,
             'block_sequence': block_sequence,
-            'rest_duration': rest_duration,
+            'rest_duration': 5.0,
         })
+
         self.parent_menu.run_experiment(params)
 
     def run_custom(self):
-        """Lance un design personnalisé."""
         block_sequence = self.custom_editor.get_block_sequence()
         rest_duration = self.custom_editor.get_rest_duration()
 
@@ -450,4 +362,5 @@ class NBackTab(QWidget):
             'block_sequence': block_sequence,
             'rest_duration': rest_duration,
         })
+
         self.parent_menu.run_experiment(params)

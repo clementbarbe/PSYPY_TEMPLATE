@@ -7,6 +7,7 @@ import sys
 # Direct imports for task tabs
 from gui.tabs.tabs_temporal_judgement import TemporalJudgementTab
 from gui.tabs.tabs_nback import NBackTab
+from gui.tabs.tabs_flanker import FlankerTab
 from utils.utils import is_valid_name
 from utils.logger import get_logger
 
@@ -17,12 +18,11 @@ class ExperimentMenu(QMainWindow):
         super().__init__()
         self.setWindowTitle("Configuration Expérimentale")
         
-        # --- POLICE GLOBALE TAILLE 12 (S'applique à TOUT, y compris Hardware) ---
         self.global_font = QFont("Segoe UI", 12)
         self.setFont(self.global_font)
         
         # Fenêtre redimensionnée pour le confort visuel
-        self.setFixedSize(1300, 750)
+        self.setFixedSize(1300, 1000)
         
         self.hardware_present = False 
         self.eyelink_present = False  
@@ -136,6 +136,7 @@ class ExperimentMenu(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.addTab(TemporalJudgementTab(self), "Temporal Judgement")
         self.tabs.addTab(NBackTab(self), "Nback")
+        self.tabs.addTab(FlankerTab(self), "Flanker")
         parent_layout.addWidget(self.tabs)
 
     def validate_config(self):

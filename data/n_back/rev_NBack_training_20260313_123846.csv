@@ -1,3 +1,0 @@
-block_idx,correct_rejection,false_alarm,hit,is_correct,is_target,letter,miss,mode,n_level,participant,response_key,rt,run_type,session,timestamp,trial_idx
-0,1,0,0,1,0,W,0,pc,1-back,rev,NONE,-1,training,01,12:38:43.624760,0
-0,0,0,0,0,1,W,1,pc,1-back,rev,f,0.3013,training,01,12:38:46.152705,1
