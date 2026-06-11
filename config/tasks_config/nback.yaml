@@ -1,0 +1,135 @@
+# ═══════════════════════════════════════════════════════════════════
+# N-Back Task — Design Configuration
+# ═══════════════════════════════════════════════════════════════════
+
+task_name: nback
+display_name: "N-Back"
+
+stimulus:
+  letter_height: 0.15
+  cue_height: 0.20
+  fixation_height: 0.1
+
+consonants:
+  - B
+  - C
+  - D
+  - F
+  - G
+  - H
+  - J
+  - K
+  - L
+  - M
+  - N
+  - P
+  - R
+  - S
+  - T
+  - V
+  - W
+  - Z
+
+zero_back_targets:
+  - B
+  - D
+  - K
+  - M
+  - R
+  - T
+
+ttl_codes:
+  stim_target: 100
+  stim_nontarget: 101
+  response_hit: 150
+  response_false_alarm: 151
+
+designs:
+
+  1:
+    name: "0 vs 2-back (standard ~8min)"
+    rest_duration: 12.0
+    stim_duration: 0.5
+    isi_duration: 2.0
+    instruction_duration: 4.0
+    pre_block_fixation: 2.0
+    target_ratio: 0.33
+    blocks:
+      - level: 0
+        n_trials: 25
+      - level: 2
+        n_trials: 25
+      - level: 2
+        n_trials: 25
+      - level: 0
+        n_trials: 25
+      - level: 2
+        n_trials: 25
+      - level: 0
+        n_trials: 25
+
+  2:
+    name: "0 vs 2-back (dense)"
+    rest_duration: 10.0
+    stim_duration: 0.5
+    isi_duration: 2.0
+    instruction_duration: 4.0
+    pre_block_fixation: 2.0
+    target_ratio: 0.33
+    blocks:
+      - level: 0
+        n_trials: 20
+      - level: 2
+        n_trials: 20
+      - level: 2
+        n_trials: 20
+      - level: 0
+        n_trials: 20
+      - level: 2
+        n_trials: 20
+      - level: 0
+        n_trials: 20
+
+  3:
+    name: "1-2-3-back (paramétrique)"
+    rest_duration: 12.0
+    stim_duration: 0.5
+    isi_duration: 2.0
+    instruction_duration: 4.0
+    pre_block_fixation: 2.0
+    target_ratio: 0.33
+    blocks:
+      - level: 1
+        n_trials: 25
+      - level: 2
+        n_trials: 25
+      - level: 3
+        n_trials: 25
+      - level: 2
+        n_trials: 25
+      - level: 1
+        n_trials: 25
+      - level: 3
+        n_trials: 25
+
+  4:
+    name: "1-2-3-back (randomisé)"
+    rest_duration: 10.0
+    stim_duration: 0.5
+    isi_duration: 2.0
+    instruction_duration: 4.0
+    pre_block_fixation: 2.0
+    target_ratio: 0.33
+    blocks:
+      - level: 2
+        n_trials: 20
+      - level: 1
+        n_trials: 20
+      - level: 3
+        n_trials: 20
+      - level: 2
+        n_trials: 20
+      - level: 3
+        n_trials: 20
+      - level: 1
+        n_trials: 20

@@ -1,94 +1,153 @@
-import pylink
-import os
-import time
+"""
+Eye-tracker wrapper with robust cleanup.
 
-class EyeTracker:
-    def __init__(self, sample_rate=1000, dummy_mode=False):
-        self.dummy_mode = dummy_mode
-        self.el = None
-        self.filename = "TEST.EDF"
-        self.active = False
-        self.sample_rate = sample_rate
-        
-    def initialize(self, file_name="TEST.EDF"):
-        """
-        Initialise la connexion avec le Eyelink et ouvre le fichier.
-        file_name : Doit faire 8 caractères max (sans l'extension).
-        """
-        # Gestion de la longueur du nom de fichier (Max 8 char pour DOS/Eyelink)
-        base_name = os.path.splitext(file_name)[0]
-        if len(base_name) > 8:
-            print(f"ATTENTION: Nom de fichier Eyelink trop long ({base_name}). Tronqué à 8 char.")
-            base_name = base_name[:8]
-        self.filename = base_name + ".EDF"
+Guarantees: close() can be called multiple times safely.
+Emergency shutdown always attempts data transfer.
+"""
 
-        if self.dummy_mode:
-            print("EyeLink: Mode Dummy activé.")
-            self.el = pylink.EyeLink(None)
-            self.active = True
-            return
+from __future__ import annotations
 
+from pathlib import Path
+from hardware.base_device import BaseDevice
+
+
+class EyeTracker(BaseDevice):
+    """Minimal eye-tracker interface with safe cleanup."""
+
+    def __init__(self, logger=None):
+        self._tracker = None
+        self._recording = False
+        self._data_file_open = False
+        self._edf_filename: str = ''
+        self._logger = logger
+        self._closed = False
+
+    def open(self) -> bool:
         try:
-            # Connexion IP par défaut du Eyelink
-            self.el = pylink.EyeLink("100.1.1.1")
-            self.active = True
-            print(f"EyeLink: Connecté (Version {self.el.getTrackerVersion()})")
-        except RuntimeError:
-            print("EyeLink: Erreur de connexion. Passage en mode Dummy.")
-            self.el = pylink.EyeLink(None)
-            self.dummy_mode = True
-            self.active = False
+            from pylink import EyeLink
+            self._tracker = EyeLink("100.1.1.1")
+            if self._logger:
+                self._logger.ok("EyeTracker connected.")
+            return True
+        except Exception as e:
+            if self._logger:
+                self._logger.warn(f"EyeTracker unavailable: {e}")
+            self._tracker = None
+            return False
 
-        # Configuration de base
-        self.el.sendCommand(f"sample_rate = {self.sample_rate}")
-        
-        # Ouverture du fichier sur le Eyelink (Disque dur du Host PC)
-        self.el.openDataFile(self.filename)
-        
-        # Configuration des données à enregistrer (Events + Samples)
-        # AREA, GAZE, GAZERES, HREF, PUPIL, STATUS, INPUT
-        self.el.sendCommand("file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON,INPUT")
-        self.el.sendCommand("file_sample_data  = LEFT,RIGHT,GAZE,HREF,AREA,GAZERES,STATUS,INPUT")
-        self.el.sendCommand("link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON,INPUT")
-        self.el.sendCommand("link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,INPUT")
-
-    def start_recording(self):
-        """Démarre l'enregistrement des échantillons et événements"""
-        if self.el:
-            # Arguments: file_samples, file_events, link_samples, link_events
-            self.el.startRecording(1, 1, 1, 1)
-            # Attendre un peu que le mode s'active
-            time.sleep(0.1)
-
-    def stop_recording(self):
-        """Arrête l'enregistrement"""
-        if self.el:
-            self.el.stopRecording()
-
-    def send_message(self, msg):
-        """Envoie un marqueur (trigger) dans le fichier EDF"""
-        if self.el:
-            self.el.sendMessage(msg)
-
-    def close_and_transfer_data(self, local_folder="data"):
+    def close(self) -> None:
         """
-        Ferme le fichier sur le tracker et le télécharge sur le PC local.
+        Full cleanup — safe to call multiple times.
+
+        Order: stop recording → close data file → close connection.
         """
-        if self.el:
-            self.el.closeDataFile()
-            
-            # Création du dossier local si inexistant
-            if not os.path.exists(local_folder):
-                os.makedirs(local_folder)
-                
-            local_path = os.path.join(local_folder, self.filename)
-            
-            print(f"EyeLink: Transfert de {self.filename} vers {local_path}...")
+        if self._closed or self._tracker is None:
+            return
+        self._closed = True
+
+        # 1. Stop recording
+        if self._recording:
             try:
-                # receiveDataFile(nom_distant, nom_local)
-                self.el.receiveDataFile(self.filename, local_path)
-                print("EyeLink: Transfert terminé avec succès.")
+                self._tracker.stopRecording()
+                self._recording = False
+                if self._logger:
+                    self._logger.log("EyeTracker: recording stopped.")
             except Exception as e:
-                print(f"EyeLink: Erreur lors du transfert : {e}")
-            
-            self.el.close()
+                if self._logger:
+                    self._logger.warn(f"EyeTracker stop_recording: {e}")
+
+        # 2. Close data file on tracker
+        if self._data_file_open:
+            try:
+                self._tracker.closeDataFile()
+                self._data_file_open = False
+            except Exception as e:
+                if self._logger:
+                    self._logger.warn(f"EyeTracker closeDataFile: {e}")
+
+        # 3. Close connection
+        try:
+            self._tracker.close()
+            if self._logger:
+                self._logger.log("EyeTracker: connection closed.")
+        except Exception as e:
+            if self._logger:
+                self._logger.warn(f"EyeTracker close: {e}")
+
+        self._tracker = None
+
+    def is_connected(self) -> bool:
+        return self._tracker is not None and not self._closed
+
+    def start_recording(self, filename: str = 'et.edf') -> None:
+        if self._tracker is None or self._closed:
+            return
+        try:
+            self._edf_filename = filename
+            self._tracker.openDataFile(filename)
+            self._data_file_open = True
+            self._tracker.startRecording(1, 1, 1, 1)
+            self._recording = True
+            if self._logger:
+                self._logger.ok(f"EyeTracker: recording started ({filename})")
+        except Exception as e:
+            if self._logger:
+                self._logger.warn(f"EyeTracker start_recording: {e}")
+
+    def stop_recording(self) -> None:
+        if self._tracker is None or not self._recording or self._closed:
+            return
+        try:
+            self._tracker.stopRecording()
+            self._recording = False
+        except Exception:
+            pass
+
+    def send_message(self, msg: str) -> None:
+        if self._tracker is None or self._closed:
+            return
+        try:
+            self._tracker.sendMessage(msg)
+        except Exception:
+            pass
+
+    def transfer_data(self, local_dir: str) -> Path | None:
+        """
+        Stop recording, close file, transfer EDF from tracker to local disk.
+
+        Safe to call even if recording was already stopped.
+        Returns local path on success, None on failure.
+        """
+        if self._tracker is None or self._closed:
+            return None
+
+        # Stop recording if still going
+        if self._recording:
+            try:
+                self._tracker.stopRecording()
+                self._recording = False
+            except Exception:
+                pass
+
+        # Close data file
+        if self._data_file_open:
+            try:
+                self._tracker.closeDataFile()
+                self._data_file_open = False
+            except Exception as e:
+                if self._logger:
+                    self._logger.warn(f"ET closeDataFile: {e}")
+                return None
+
+        # Transfer
+        try:
+            local_path = Path(local_dir) / self._edf_filename
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            self._tracker.receiveDataFile('', str(local_path))
+            if self._logger:
+                self._logger.ok(f"EyeTracker data transferred: {local_path}")
+            return local_path
+        except Exception as e:
+            if self._logger:
+                self._logger.warn(f"ET transfer failed: {e}")
+            return None

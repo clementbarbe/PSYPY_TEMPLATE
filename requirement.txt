@@ -1,0 +1,5 @@
+psychopy>=2023.1.0
+PyYAML>=6.0
+numpy>=1.21
+pyserial>=3.5
+pytest>=7.0

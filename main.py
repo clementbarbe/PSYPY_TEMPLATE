@@ -1,82 +1,41 @@
+#!/usr/bin/env python3
+"""
+fMRI Experiment Framework — GUI entry point (PyQt6).
+
+Usage:
+    python main.py
+"""
+
 import sys
-import signal
-from PyQt6.QtWidgets import QApplication
-from gui.menu import ExperimentMenu
-from utils.logger import get_logger
+from pathlib import Path
 
-signal.signal(signal.SIGINT, signal.SIG_DFL)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-
-def show_menu_and_get_config(app, last_config=None):
-    menu = ExperimentMenu(last_config)
-    menu.show()
-    app.exec()
-    config = menu.get_config()
-    menu.deleteLater()
-    app.processEvents()
-    return config
+# Windows console setup MUST be first
+from utils.console import init_console
+init_console()
 
 
-def run_task_logic(config):
-    logger = get_logger()
+def start_experiment(settings, task_name, design_id, extra_params=None):
+    """Called by the launcher after GUI closes."""
+    from core.experiment import Experiment
 
-    from psychopy import visual, core, logging
-    from utils.task_factory import create_task
-
-    logging.console.setLevel(logging.ERROR)
-
-    win = visual.Window(
-        fullscr=config.get('fullscr', True),
-        color='black',
-        units='norm',
-        screen=config.get('screenid', 0),
-        checkTiming=False,
-        waitBlanking=True
-    )
-    win.mouseVisible = False
-
-    task = create_task(config, win)
-
-    if not task:
-        logger.err(f"Factory Error: Could not create task '{config.get('tache')}'")
-        win.close()
-        return
-
+    exp = Experiment(settings)
     try:
-        win.flip()
-        core.wait(0.5)
-        task.run()
-    except Exception as e:
-        logger.err(f"Runtime Error during task execution: {e}")
-        import traceback
-        traceback.print_exc()
+        saved = exp.run_task(
+            task_name,
+            design_id=design_id,
+            **(extra_params or {}),
+        )
+        if saved:
+            print(f"\n[OK] Data saved: {saved}")
     finally:
-        win.close()
+        exp.cleanup()
 
 
 def main():
-    logger = get_logger()
-    app = QApplication(sys.argv)
-    last_config = None
-
-    while True:
-        config = show_menu_and_get_config(app, last_config)
-
-        if not config:
-            logger.log("Sortie demandée par l'utilisateur.")
-            break
-
-        try:
-            logger.log(f"Lancement de la tâche : {config.get('tache', 'Unknown')}...")
-            run_task_logic(config)
-            last_config = config
-        except Exception as e:
-            logger.err(f"Erreur fatale dans la boucle principale : {e}")
-            pass
-
-    logger.log("Application shutdown.")
-    app.quit()
-    sys.exit(0)
+    from gui.launcher import run_launcher
+    run_launcher(on_start=start_experiment)
 
 
 if __name__ == '__main__':

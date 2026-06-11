@@ -1,0 +1,1 @@
+"""Shared utilities — timing, visual, validators, decorators."""
