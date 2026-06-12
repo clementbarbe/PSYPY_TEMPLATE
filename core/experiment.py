@@ -1,8 +1,5 @@
 """
-Experiment — top-level orchestrator.
-
-Creates PsychoPy window, clock, hardware, logger.
-Registers atexit handler for emergency cleanup.
+Experiment orchestrator — uses screen_index from settings.
 """
 
 from __future__ import annotations
@@ -29,15 +26,7 @@ from tasks.registry import get_task
 
 
 class Experiment:
-    """
-    Session-level container.
-
-    Registers atexit + signal handlers so that hardware is always
-    cleaned up, even on unhandled exceptions or force-quit.
-    """
-
-    # Class-level reference so atexit can find the active instance
-    _active_instance: Experiment | None = None
+    _active_instance = None
 
     def __init__(self, settings: ExperimentSettings):
         self.settings = settings
@@ -53,23 +42,17 @@ class Experiment:
             enabled=settings.trigger_output_enabled,
         )
 
-        # ── Eyetracker init if enabled ───────────────────────────────
         if settings.eyetracker_enabled:
             self.hardware.init_eyetracker()
 
-        # ── Safety net: atexit + signal handlers ─────────────────────
         Experiment._active_instance = self
         atexit.register(Experiment._atexit_cleanup)
         self._install_signal_handlers()
 
         self.logger.ok(
-            f"Experiment initialised | scanner={self.scanner.name} | "
-            f"mode={settings.mode} | resolution={self.scanner.resolution}"
+            f"Experiment | scanner={self.scanner.name} | "
+            f"mode={settings.mode} | screen={settings.screen_index}"
         )
-
-    # ═════════════════════════════════════════════════════════════════
-    # Window
-    # ═════════════════════════════════════════════════════════════════
 
     def _create_window(self) -> visual.Window:
         mon = monitors.Monitor(
@@ -79,11 +62,14 @@ class Experiment:
         )
         mon.setSizePix(list(self.scanner.resolution))
 
+        # Use screen_index from settings (GUI selection)
+        screen_idx = self.settings.screen_index
+
         win = visual.Window(
             size=self.scanner.resolution,
             fullscr=self.settings.fullscreen,
             monitor=mon,
-            screen=self.scanner.screen_index,
+            screen=screen_idx,
             color=BG_COLOR,
             colorSpace='rgb',
             units='norm',
@@ -92,32 +78,21 @@ class Experiment:
         )
 
         if self.scanner.flip_horizontal or self.scanner.flip_vertical:
-            flip_h = -1.0 if self.scanner.flip_horizontal else 1.0
-            flip_v = -1.0 if self.scanner.flip_vertical else 1.0
-            win.viewScale = [flip_h, flip_v]
+            fh = -1.0 if self.scanner.flip_horizontal else 1.0
+            fv = -1.0 if self.scanner.flip_vertical else 1.0
+            win.viewScale = [fh, fv]
 
-        self.logger.log(
-            f"Window created: {self.scanner.resolution} "
-            f"@ {self.scanner.refresh_rate}Hz"
-        )
         return win
-
-    # ═════════════════════════════════════════════════════════════════
-    # Task execution
-    # ═════════════════════════════════════════════════════════════════
 
     def run_task(self, task_name: str, design_id: int = 1,
                  **kwargs) -> Path | None:
         task_cls = get_task(task_name)
         if task_cls is None:
-            raise ConfigError(
-                f"Unknown task '{task_name}'. "
-                f"Register it with @register_task."
-            )
+            raise ConfigError(f"Unknown task '{task_name}'.")
 
         task_config = load_task_config(task_name)
         if not task_config:
-            raise ConfigError(f"No config found for task '{task_name}'.")
+            raise ConfigError(f"No config for task '{task_name}'.")
 
         data_writer = DataWriter(
             output_dir=self.settings.task_dir(task_name),
@@ -126,86 +101,51 @@ class Experiment:
         )
 
         task = task_cls(
-            win=self.win,
-            clock=self.clock,
-            hardware=self.hardware,
-            data_writer=data_writer,
-            logger=self.logger,
-            event_bus=self.event_bus,
-            settings=self.settings,
-            scanner=self.scanner,
-            task_config=task_config,
-            design_id=design_id,
+            win=self.win, clock=self.clock,
+            hardware=self.hardware, data_writer=data_writer,
+            logger=self.logger, event_bus=self.event_bus,
+            settings=self.settings, scanner=self.scanner,
+            task_config=task_config, design_id=design_id,
             **kwargs,
         )
 
-        self.logger.ok(f"Running task: {task_name} (design {design_id})")
+        self.logger.ok(f"Running: {task_name} design {design_id}")
         return task.run()
 
-    # ═════════════════════════════════════════════════════════════════
-    # Cleanup — idempotent
-    # ═════════════════════════════════════════════════════════════════
-
     def cleanup(self) -> None:
-        """Release all resources. Safe to call multiple times."""
-        try:
-            self.hardware.close()
-        except Exception as e:
-            self.logger.warn(f"Hardware cleanup: {e}")
-
+        try: self.hardware.close()
+        except Exception: pass
         try:
             if self.win and not getattr(self.win, '_closed', True):
                 self.win.close()
-        except Exception:
-            pass
-
+        except Exception: pass
         try:
-            self.logger.ok("Experiment cleanup complete.")
+            self.logger.ok("Cleanup complete.")
             self.logger.close()
-        except Exception:
-            pass
-
+        except Exception: pass
         Experiment._active_instance = None
-
-    # ═════════════════════════════════════════════════════════════════
-    # Safety nets
-    # ═════════════════════════════════════════════════════════════════
 
     @staticmethod
     def _atexit_cleanup():
-        """Called by atexit — last resort cleanup."""
         inst = Experiment._active_instance
         if inst is not None:
-            try:
-                inst.hardware.emergency_shutdown(
-                    data_dir=inst.settings.subject_dir
-                )
-            except Exception:
-                pass
+            try: inst.hardware.emergency_shutdown(data_dir=inst.settings.subject_dir)
+            except Exception: pass
             try:
                 if inst.win and not getattr(inst.win, '_closed', True):
                     inst.win.close()
-            except Exception:
-                pass
+            except Exception: pass
 
-    def _install_signal_handlers(self) -> None:
-        """Install signal handlers for CTRL+C (works on Windows + Linux)."""
+    def _install_signal_handlers(self):
         def handler(signum, frame):
-            self.logger.warn(f"Signal {signum} received — emergency shutdown")
-            self.hardware.emergency_shutdown(
-                data_dir=self.settings.subject_dir
-            )
+            self.hardware.emergency_shutdown(data_dir=self.settings.subject_dir)
             try:
                 if self.win and not getattr(self.win, '_closed', True):
                     self.win.close()
-            except Exception:
-                pass
+            except Exception: pass
             sys.exit(1)
-
         try:
             signal.signal(signal.SIGINT, handler)
-            # SIGTERM not available on Windows
             if hasattr(signal, 'SIGTERM'):
                 signal.signal(signal.SIGTERM, handler)
-        except Exception:
-            pass  # Can't set signal in some contexts (e.g. threads)
+        except Exception: pass

@@ -1,293 +1,224 @@
 """
-PyQt6 experiment launcher with auto-discovered task tabs.
+Minimal experiment menu — sober design.
 
-PsychoPy is NOT imported in this module.
-Tasks are discovered via the lazy registry (no heavy imports).
+Flow:
+    1. User fills in config (name, session, screen, etc.)
+    2. Goes to the task tab
+    3. Clicks a design button -> experiment launches directly
+
+No experimental logic here. Only parameter collection.
 """
 
 from __future__ import annotations
 
 import sys
-from typing import Callable
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QGridLayout, QLabel, QLineEdit, QComboBox, QCheckBox,
-    QGroupBox, QTabWidget, QPushButton, QStatusBar, QFrame,
-    QMessageBox, QSizePolicy,
+    QGridLayout, QLabel, QLineEdit, QSpinBox, QComboBox,
+    QCheckBox, QGroupBox, QTabWidget, QPushButton, QMessageBox,
 )
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QFont
 
 from config.settings import ExperimentSettings
-from config.scanners import list_scanners
-from tasks.registry import list_tasks          # no PsychoPy triggered
-from gui.styles import DARK_STYLESHEET
-from gui.task_panels import get_panel_builder, TaskPanel
+from gui.styles import STYLESHEET
+from gui.task_panels import get_registered_panels
 
 
-class ExperimentLauncher(QMainWindow):
-    """
-    Main launcher window.
+class ExperimentMenu(QMainWindow):
+    """Main configuration menu."""
 
-    Collects session parameters, then calls on_start(settings, task, design, params).
-    """
-
-    def __init__(
-        self,
-        on_start: Callable[[ExperimentSettings, str, int, dict], None],
-    ):
+    def __init__(self):
         super().__init__()
-        self._on_start = on_start
-        self._task_panels: dict[str, TaskPanel] = {}
+        self.setWindowTitle("Configuration Experimentale")
+        self.setFont(QFont("Segoe UI", 12))
+        self.setStyleSheet(STYLESHEET)
+        self.setMinimumWidth(600)
 
-        self.setWindowTitle("fMRI Experiment Framework")
-        self.setMinimumSize(QSize(620, 580))
-        self.setStyleSheet(DARK_STYLESHEET)
-
+        self.final_config = None
         self._build_ui()
-        self._center_on_screen()
 
     # ═════════════════════════════════════════════════════════════════
-    # UI Construction
+    # UI
     # ═════════════════════════════════════════════════════════════════
 
-    def _build_ui(self) -> None:
+    def _build_ui(self):
         central = QWidget()
-        central.setObjectName("centralWidget")
         self.setCentralWidget(central)
+        main = QVBoxLayout(central)
+        main.setContentsMargins(16, 16, 16, 16)
+        main.setSpacing(12)
 
-        main_layout = QVBoxLayout(central)
-        main_layout.setContentsMargins(20, 16, 20, 12)
-        main_layout.setSpacing(12)
+        self._build_config(main)
+        self._build_tabs(main)
 
-        # ── Header ───────────────────────────────────────────────────
-        header_layout = QVBoxLayout()
-        header_layout.setSpacing(2)
+    def _build_config(self, parent):
+        group = QGroupBox("Configuration")
+        grid = QGridLayout(group)
+        grid.setSpacing(8)
+        grid.setContentsMargins(12, 16, 12, 12)
 
-        title = QLabel("fMRI Experiment Framework")
-        title.setObjectName("titleLabel")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        header_layout.addWidget(title)
+        # ── Row 0: Nom, Session, Ecran, Mode ────────────────────────
+        grid.addWidget(QLabel("Nom:"), 0, 0)
+        self.txt_nom = QLineEdit()
+        self.txt_nom.setPlaceholderText("ID participant")
+        self.txt_nom.setFixedWidth(150)
+        grid.addWidget(self.txt_nom, 0, 1)
 
-        subtitle = QLabel("Multi-scanner cognitive neuroscience toolkit")
-        subtitle.setObjectName("subtitleLabel")
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        header_layout.addWidget(subtitle)
+        grid.addWidget(QLabel("Session:"), 0, 2)
+        self.spin_session = QSpinBox()
+        self.spin_session.setRange(1, 20)
+        self.spin_session.setValue(1)
+        self.spin_session.setFixedWidth(60)
+        grid.addWidget(self.spin_session, 0, 3)
 
-        main_layout.addLayout(header_layout)
+        grid.addWidget(QLabel("Ecran:"), 0, 4)
+        self.spin_screen = QSpinBox()
+        self.spin_screen.setRange(0, len(QApplication.screens()) - 1)
+        self.spin_screen.setValue(0)
+        self.spin_screen.setFixedWidth(60)
+        grid.addWidget(self.spin_screen, 0, 5)
 
-        # Separator
-        sep = QFrame()
-        sep.setObjectName("separator")
-        sep.setFrameShape(QFrame.Shape.HLine)
-        main_layout.addWidget(sep)
+        grid.addWidget(QLabel("Mode:"), 0, 6)
+        self.combo_mode = QComboBox()
+        self.combo_mode.addItems(["PC", "fMRI"])
+        self.combo_mode.setFixedWidth(80)
+        grid.addWidget(self.combo_mode, 0, 7)
 
-        # ── Session parameters ───────────────────────────────────────
-        session_group = QGroupBox("Session Parameters")
-        sg_layout = QGridLayout(session_group)
-        sg_layout.setSpacing(10)
+        # ── Row 1: Checkboxes ────────────────────────────────────────
+        row1 = QHBoxLayout()
+        row1.setSpacing(20)
 
-        # Row 0: Participant + Session
-        sg_layout.addWidget(
-            QLabel("Participant ID:"), 0, 0, Qt.AlignmentFlag.AlignRight
-        )
-        self._pid_edit = QLineEdit("01")
-        self._pid_edit.setMaximumWidth(160)
-        self._pid_edit.setPlaceholderText("e.g. 01, P001")
-        sg_layout.addWidget(self._pid_edit, 0, 1)
+        self.chk_save = QCheckBox("Enregistrer")
+        self.chk_save.setChecked(True)
+        row1.addWidget(self.chk_save)
 
-        sg_layout.addWidget(
-            QLabel("Session:"), 0, 2, Qt.AlignmentFlag.AlignRight
-        )
-        self._ses_edit = QLineEdit("01")
-        self._ses_edit.setMaximumWidth(80)
-        sg_layout.addWidget(self._ses_edit, 0, 3)
+        self.chk_parport = QCheckBox("Port Parallele")
+        row1.addWidget(self.chk_parport)
 
-        # Row 1: Scanner + Mode
-        sg_layout.addWidget(
-            QLabel("Scanner:"), 1, 0, Qt.AlignmentFlag.AlignRight
-        )
-        self._scanner_combo = QComboBox()
-        self._scanner_combo.addItems(list_scanners())
-        self._scanner_combo.setCurrentText('pc')
-        self._scanner_combo.setMaximumWidth(160)
-        sg_layout.addWidget(self._scanner_combo, 1, 1)
+        sep = QLabel("|")
+        sep.setStyleSheet("color: #a0a0a0;")
+        row1.addWidget(sep)
 
-        sg_layout.addWidget(
-            QLabel("Mode:"), 1, 2, Qt.AlignmentFlag.AlignRight
-        )
-        self._mode_combo = QComboBox()
-        self._mode_combo.addItems(['pc', 'fmri'])
-        self._mode_combo.setMaximumWidth(100)
-        self._scanner_combo.currentTextChanged.connect(
-            self._on_scanner_changed
-        )
-        sg_layout.addWidget(self._mode_combo, 1, 3)
+        self.chk_eyetracker = QCheckBox("Eye Tracker")
+        row1.addWidget(self.chk_eyetracker)
 
-        # Row 2: Hardware flags
-        hw_layout = QHBoxLayout()
-        hw_layout.setSpacing(30)
-        self._et_check = QCheckBox("Eye-tracker")
-        self._trigger_check = QCheckBox("TTL triggers")
-        hw_layout.addWidget(self._et_check)
-        hw_layout.addWidget(self._trigger_check)
-        hw_layout.addStretch()
-        sg_layout.addLayout(hw_layout, 2, 0, 1, 4)
+        self.btn_et_reset = QPushButton("Force Reset")
+        self.btn_et_reset.setObjectName("resetBtn")
+        self.btn_et_reset.setFixedWidth(90)
+        self.btn_et_reset.clicked.connect(self._force_reset_eyetracker)
+        row1.addWidget(self.btn_et_reset)
 
-        main_layout.addWidget(session_group)
+        row1.addStretch()
+        grid.addLayout(row1, 1, 0, 1, 8)
 
-        # ── Task tabs ────────────────────────────────────────────────
-        self._tab_widget = QTabWidget()
-        available_tasks = list_tasks()
+        parent.addWidget(group)
 
-        if not available_tasks:
-            empty_label = QLabel(
-                "No tasks registered.\n"
-                "Add register_lazy() calls in tasks/__init__.py."
-            )
-            empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_widget = QWidget()
-            el = QVBoxLayout(empty_widget)
-            el.addWidget(empty_label)
-            self._tab_widget.addTab(empty_widget, "No Tasks")
+    def _build_tabs(self, parent):
+        self.tabs = QTabWidget()
+
+        panels = get_registered_panels()
+        if not panels:
+            lbl = QLabel("Aucune tache enregistree.")
+            lbl.setStyleSheet("padding: 20px; color: #808080;")
+            w = QWidget()
+            lo = QVBoxLayout(w)
+            lo.addWidget(lbl)
+            self.tabs.addTab(w, "Vide")
         else:
-            for task_name in available_tasks:
-                self._add_task_tab(task_name)
+            for name, panel_cls in panels.items():
+                panel = panel_cls(self)
+                self.tabs.addTab(panel, name)
 
-        main_layout.addWidget(self._tab_widget, stretch=1)
-
-        # ── Buttons ──────────────────────────────────────────────────
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(12)
-        btn_layout.addStretch()
-
-        quit_btn = QPushButton("Quit")
-        quit_btn.setObjectName("quitBtn")
-        quit_btn.clicked.connect(self.close)
-        btn_layout.addWidget(quit_btn)
-
-        launch_btn = QPushButton("Launch Task")
-        launch_btn.setObjectName("launchBtn")
-        launch_btn.clicked.connect(self._launch)
-        btn_layout.addWidget(launch_btn)
-
-        main_layout.addLayout(btn_layout)
-
-        # ── Status bar ───────────────────────────────────────────────
-        self._status_bar = QStatusBar()
-        self.setStatusBar(self._status_bar)
-        self._status_bar.showMessage(
-            "Ready - select a task and press Launch"
-        )
+        parent.addWidget(self.tabs)
 
     # ═════════════════════════════════════════════════════════════════
-    # Task tabs
+    # Validation + Launch
     # ═════════════════════════════════════════════════════════════════
 
-    def _add_task_tab(self, task_name: str) -> None:
-        builder = get_panel_builder(task_name)
-        if builder is not None:
-            panel = builder(self._tab_widget, task_name)
-        else:
-            panel = TaskPanel(self._tab_widget, task_name)
-
-        self._task_panels[task_name] = panel
-        display_name = task_name.replace('_', ' ').title()
-        self._tab_widget.addTab(panel, f"  {display_name}  ")
-
-    # ═════════════════════════════════════════════════════════════════
-    # Callbacks
-    # ═════════════════════════════════════════════════════════════════
-
-    def _on_scanner_changed(self, scanner_name: str) -> None:
-        if scanner_name.lower() != 'pc':
-            self._mode_combo.setCurrentText('fmri')
-            self._trigger_check.setChecked(True)
-        else:
-            self._mode_combo.setCurrentText('pc')
-            self._trigger_check.setChecked(False)
-
-    def _get_selected_task_name(self) -> str | None:
-        available = list_tasks()
-        if not available:
+    def validate_config(self) -> ExperimentSettings | None:
+        nom = self.txt_nom.text().strip()
+        if not nom:
+            QMessageBox.warning(self, "Erreur", "Nom du participant requis.")
             return None
-        idx = self._tab_widget.currentIndex()
-        if 0 <= idx < len(available):
-            return available[idx]
-        return None
 
-    # ═════════════════════════════════════════════════════════════════
-    # Launch
-    # ═════════════════════════════════════════════════════════════════
+        # Sanitize
+        safe_nom = ''.join(
+            c for c in nom if c.isalnum() or c in '-_'
+        )
+        if not safe_nom:
+            QMessageBox.warning(self, "Erreur", "Nom invalide.")
+            return None
 
-    def _launch(self) -> None:
-        pid = self._pid_edit.text().strip()
-        if not pid:
-            QMessageBox.warning(self, "Warning", "Participant ID is required.")
-            return
+        mode = self.combo_mode.currentText().lower()
 
-        task_name = self._get_selected_task_name()
-        if not task_name:
-            QMessageBox.warning(self, "Warning", "No task selected.")
-            return
-
-        panel = self._task_panels.get(task_name)
-        design_id = panel.selected_design_id if panel else 1
-        extra_params = panel.get_extra_params() if panel else {}
-
-        mode = self._mode_combo.currentText()
-
-        settings = ExperimentSettings(
-            participant_id=pid,
-            session=self._ses_edit.text().strip() or '01',
-            scanner_name=self._scanner_combo.currentText(),
+        return ExperimentSettings(
+            participant_id=safe_nom,
+            session=f"{self.spin_session.value():02d}",
+            scanner_name='pc',
             mode=mode,
             fullscreen=(mode == 'fmri'),
-            eyetracker_enabled=self._et_check.isChecked(),
-            trigger_output_enabled=self._trigger_check.isChecked(),
+            screen_index=self.spin_screen.value(),
+            eyetracker_enabled=self.chk_eyetracker.isChecked(),
+            trigger_output_enabled=self.chk_parport.isChecked(),
+            save_data=self.chk_save.isChecked(),
         )
 
-        confirm = QMessageBox.question(
-            self, "Confirm Launch",
-            f"Participant: {pid}\n"
-            f"Session: {settings.session}\n"
-            f"Scanner: {settings.scanner_name}\n"
-            f"Mode: {mode}\n"
-            f"Task: {task_name}\n"
-            f"Design: {design_id}\n\n"
-            f"Launch experiment?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        if confirm != QMessageBox.StandardButton.Yes:
+    def run_experiment(self, task_params: dict):
+        """Called by task panels when a design button is clicked."""
+        settings = self.validate_config()
+        if settings is None:
             return
 
-        self._status_bar.showMessage(
-            f"Launching {task_name} (design {design_id}) for sub-{pid}..."
-        )
+        self.final_config = {
+            'settings': settings,
+            'task_name': task_params['task_name'],
+            'design_id': task_params.get('design_id', 1),
+            'extra_params': task_params.get('extra_params', {}),
+        }
 
         self.close()
-        QApplication.processEvents()
-        self._on_start(settings, task_name, design_id, extra_params)
+        app = QApplication.instance()
+        if app:
+            app.quit()
+
+    def get_config(self) -> dict | None:
+        return self.final_config
 
     # ═════════════════════════════════════════════════════════════════
-    # Helpers
+    # Eye Tracker Force Reset
     # ═════════════════════════════════════════════════════════════════
 
-    def _center_on_screen(self) -> None:
-        screen = QApplication.primaryScreen()
-        if screen:
-            geo = screen.availableGeometry()
-            x = (geo.width() - self.width()) // 2
-            y = (geo.height() - self.height()) // 2
-            self.move(x, y)
+    def _force_reset_eyetracker(self):
+        """Force reset a stuck EyeLink tracker."""
+        reply = QMessageBox.question(
+            self, "Force Reset",
+            "Reinitialiser l'eye-tracker ?\n"
+            "Ceci ferme toute connexion active et reconnecte.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        from hardware.eyetracker import EyeTracker
+        success, msg = EyeTracker.force_reset()
+
+        if success:
+            QMessageBox.information(self, "Eye Tracker", msg)
+        else:
+            QMessageBox.warning(self, "Eye Tracker", msg)
 
 
-def run_launcher(
-    on_start: Callable[[ExperimentSettings, str, int, dict], None],
-) -> None:
-    """Create QApplication, show launcher, block until closed."""
-    app = QApplication(sys.argv)
-    app.setApplicationName("fMRI Experiment Framework")
-    launcher = ExperimentLauncher(on_start)
-    launcher.show()
+def show_menu() -> dict | None:
+    """
+    Show the configuration menu. Block until closed.
+
+    Returns:
+        dict with 'settings', 'task_name', 'design_id', 'extra_params'
+        or None if user closed without launching.
+    """
+    app = QApplication.instance() or QApplication(sys.argv)
+    menu = ExperimentMenu()
+    menu.show()
     app.exec()
+    return menu.get_config()

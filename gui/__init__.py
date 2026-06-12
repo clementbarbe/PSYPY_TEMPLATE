@@ -1,1 +1,1 @@
-"""GUI package — PyQt6 experiment launcher."""
+"""GUI package."""

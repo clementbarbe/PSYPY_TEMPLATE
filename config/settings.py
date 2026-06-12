@@ -1,8 +1,5 @@
 """
-Experiment settings — single dataclass holding all session parameters.
-
-Passed through the framework via dependency injection.
-No global state; every component receives what it needs.
+Experiment settings — single dataclass for the session.
 """
 
 from __future__ import annotations
@@ -16,24 +13,21 @@ from config.constants import DATA_DIR
 class ExperimentSettings:
     """Immutable session-level configuration."""
 
-    # ── Subject ──────────────────────────────────────────────────────
     participant_id: str
     session: str = '01'
     run: str = '01'
 
-    # ── Environment ──────────────────────────────────────────────────
-    scanner_name: str = 'pc'        # 'cima', 'terra', 'prisma', 'pc'
-    mode: str = 'pc'                # 'fmri' or 'pc'
+    scanner_name: str = 'pc'
+    mode: str = 'pc'              # 'fmri' or 'pc'
     fullscreen: bool = True
+    screen_index: int = 0
 
-    # ── Hardware flags ───────────────────────────────────────────────
     eyetracker_enabled: bool = False
-    trigger_output_enabled: bool = True
+    trigger_output_enabled: bool = False
+    save_data: bool = True
 
-    # ── Paths ────────────────────────────────────────────────────────
     data_root: Path = field(default_factory=lambda: DATA_DIR)
 
-    # ── Derived ──────────────────────────────────────────────────────
     @property
     def subject_dir(self) -> Path:
         return self.data_root / f'sub-{self.participant_id}' / f'ses-{self.session}'
@@ -45,7 +39,6 @@ class ExperimentSettings:
         return self.subject_dir / 'logs'
 
     def output_filename(self, task_name: str, suffix: str = '') -> str:
-        """BIDS-inspired filename: sub-XX_ses-XX_task-XX_run-XX[_suffix]."""
         base = (
             f"sub-{self.participant_id}_ses-{self.session}"
             f"_task-{task_name}_run-{self.run}"
