@@ -43,7 +43,7 @@ python run_experiment.py --pid 01 --task nback --design 3 --mode fmri --screen 1
 ```
 
 
-# Project Structure
+## Project Structure
 
 ```csharp
 project_root/
@@ -107,7 +107,7 @@ project_root/
     └── sounds/
 ```
 
-# How To: Add a New Task (3 steps)
+## How To: Add a New Task (3 steps)
 Step 1 — Create the task file
 
 ```python
@@ -215,35 +215,41 @@ from config.scanners.my_scanner import MyScannerConfig
 _REGISTRY['my_scanner'] = MyScannerConfig()
 ```
 
-# Useful Functions Reference
-In any task (via self.)
-Function	What it does
-    self.get_keys(key_list=['left','right'])	Get responses. Escape auto-checked.
-    self.flush_keyboard()	Clear keyboard buffer before a trial
-    self.show_fixation(duration)	Fixation cross, frame-accurate, escape-aware
-    self.show_text_and_wait(text)	Show text, wait for any key
-    self.show_timed_text(text, duration)	Show text for N seconds
-    self.clock.time	Current time since trigger (t=0)
-    self._base_record(block_idx, trial_idx, block_def)	Pre-filled record with common fields
-    self.hardware.send_trigger(code)	Send TTL marker
-    self.hardware.send_eyetracker_message(msg)	Timestamped ET message
-Audio (via self.audio)
-    Function	What it does
-    self.audio.preload('name', 'path/file.wav')	Load file into memory (zero latency later)
-    self.audio.preload_tone('beep', freq=1000, duration=0.2)	Generate and preload a pure tone
-    self.audio.play_now('name')	Play immediately (less precise)
-    self.audio.play_scheduled('name', target_time, self.clock)	PTB-scheduled playback — call ~100ms before target
-    self.audio.stop('name')	Stop a playing sound
-    self.audio.stop_all()	Stop everything
+## Useful Functions Reference
 
-Sequence generation (import from tasks.utils)
-    Function	What it does
-    desequence(trials, key_func, max_consecutive=4)	Shuffle with no long runs of same condition
-    generate_jittered_isis(n, isi_min, isi_max)	Uniform random ISI list
-    classify_sdt(is_target, responded)	→ {hit, miss, false_alarm, correct_rejection, is_correct}
+### In any task (via self.)
+
+| Function	| What it does |
+|---|---|
+ | self.get_keys(key_list=['left','right'])	| Get responses. Escape auto-checked. | 
+ | self.flush_keyboard()	| Clear keyboard buffer before a trial | 
+ | self.show_fixation(duration)	| Fixation cross, frame-accurate, escape-aware | 
+ | self.show_text_and_wait(text)	| Show text, wait for any key | 
+ | self.show_timed_text(text, duration)	| Show text for N seconds | 
+ | self.clock.time	| Current time since trigger (t=0) | 
+ | self._base_record(block_idx, trial_idx, block_def)	| Pre-filled record with common fields| 
+ | self.hardware.send_trigger(code)	| Send TTL marker | 
+ | self.hardware.send_eyetracker_message(msg)	| Timestamped ET message | 
+
+### Audio (via self.audio)
+| Function	| What it does | 
+|---|---|
+ | self.audio.preload('name', 'path/file.wav')	|  Load file into memory (zero latency later) | 
+ | self.audio.preload_tone('beep', freq=1000, duration=0.2) | 	Generate and preload a pure tone | 
+ | self.audio.play_now('name') | 	Play immediately (less precise) | 
+ | self.audio.play_scheduled('name', target_time, self.clock) | 	PTB-scheduled playback — call ~100ms before target | 
+ | self.audio.stop('name')	 | Stop a playing sound | 
+ | self.audio.stop_all()	 | Stop everything | 
+
+### Sequence generation (import from tasks.utils)
+ | Function | 	What it does | 
+ |---|---|
+ | desequence(trials, key_func, max_consecutive=4)	 | Shuffle with no long runs of same condition | 
+ | generate_jittered_isis(n, isi_min, isi_max) | 	Uniform random ISI list | 
+ | classify_sdt(is_target, responded)	 | → {hit, miss, false_alarm, correct_rejection, is_correct}
 
 
-# Timing Reference
+## Timing Reference
 
     t=0 is defined when the scanner trigger key is received
     ALL timestamps in CSV files are relative to this t=0
@@ -253,7 +259,7 @@ Sequence generation (import from tasks.utils)
 
 
 
-# Data Output
+## Data Output
 
 ```lua
 data/
@@ -271,7 +277,7 @@ data/
     _events_final.csv — clean copy at end of session
 ```
 
-# Emergency Exit
+## Emergency Exit
     Action	What happens
     Press Escape	Clean abort → data saved → ET data transferred → hardware closed
     CTRL+C	Signal handler → emergency shutdown → same cleanup
@@ -279,7 +285,7 @@ data/
 
 Data is saved in all cases except power loss.
 
-# Requirements
+## Requirements
 
 ``` shell
 psychopy>=2023.1.0
