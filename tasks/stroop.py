@@ -1,36 +1,27 @@
 """
-Stroop Color-Word Task — blocked fMRI design.
+Stroop Color-Word Task (French) — blocked fMRI design.
 
-Reference:
-    Banich et al. (2000) blocked fMRI Stroop paradigm.
+Paradigme :
+    Nommer la COULEUR DE L'ENCRE d'un mot, en ignorant le mot.
+    3 couleurs : rouge, orange, vert
+    3 types d'essais :
+        - Congruent :   mot = encre (ROUGE en rouge)
+        - Incongruent : mot != encre (ROUGE en vert)
+        - Neutre :      mot non-couleur (TABLE en rouge)
 
-Paradigm:
-    Name the INK COLOR of a printed word, ignoring the word itself.
-    3 ink colors: red, orange, green
-    3 trial types:
-        - Congruent:   word matches ink (RED in red)
-        - Incongruent: word conflicts with ink (RED in green)
-        - Neutral:     word unrelated to color (LOT in red)
+Timing (par essai) :
+    300ms fixation + 1200ms mot colore + 500ms ITI = 2000ms
 
-Trial timing (per paper):
-    300ms fixation -> 1200ms colored word -> 500ms ITI = 2000ms total
-
-Block structure:
-    Neutral blocks alternate with congruent/incongruent blocks.
-    Con/Inc blocks contain 50% neutral trials intermixed
-    to prevent word-reading strategies.
-
-Response mapping (PC mode):
-    Left arrow  = RED
-    Down arrow  = ORANGE
-    Right arrow = GREEN
+Touches PC :
+    Fleche gauche = ROUGE
+    Fleche bas    = ORANGE
+    Fleche droite = VERT
 """
 
 from __future__ import annotations
 
 import random
 from collections import defaultdict
-from datetime import datetime
 
 from psychopy import visual
 
@@ -42,11 +33,9 @@ from utils.console import SYM_OK, SYM_ERR
 
 @register_task('stroop')
 class StroopTask(BaseTask):
-    """Stroop Color-Word fMRI task."""
+    """Stroop Color-Word fMRI task (French)."""
 
     TASK_NAME = 'stroop'
-
-    INK_COLORS = ['red', 'orange', 'green']
 
     # ═════════════════════════════════════════════════════════════════
     # SETUP
@@ -61,30 +50,28 @@ class StroopTask(BaseTask):
             pos=(0, 0), bold=True, font='monospace',
         )
 
-        # ── Color definitions ────────────────────────────────────────
         colors_cfg = self.task_config.get('colors', {})
         self._color_rgb = {
-            'red':    colors_cfg.get('red',    [1.0, -1.0, -1.0]),
+            'rouge':  colors_cfg.get('rouge',  [1.0, -1.0, -1.0]),
             'orange': colors_cfg.get('orange', [1.0,  0.3, -1.0]),
-            'green':  colors_cfg.get('green',  [-1.0, 0.8, -1.0]),
+            'vert':   colors_cfg.get('vert',   [-1.0, 0.8, -1.0]),
         }
+        self._ink_colors = list(self._color_rgb.keys())
 
-        # ── Word lists ───────────────────────────────────────────────
         cw = self.task_config.get('color_words', {})
         self._color_words = {
-            'red':    cw.get('red', 'RED'),
+            'rouge':  cw.get('rouge',  'ROUGE'),
             'orange': cw.get('orange', 'ORANGE'),
-            'green':  cw.get('green', 'GREEN'),
+            'vert':   cw.get('vert',   'VERT'),
         }
 
         nw = self.task_config.get('neutral_words', {})
         self._neutral_words = {
-            'red':    nw.get('red',    ['LOT', 'SET', 'PIN']),
-            'green':  nw.get('green',  ['CHAIR', 'PLANE', 'TABLE']),
-            'orange': nw.get('orange', ['BRIDGE', 'PLANET', 'STAPLE']),
+            'rouge':  nw.get('rouge',  ['TABLE', 'PORTE', 'LIVRE']),
+            'vert':   nw.get('vert',   ['PONT', 'BRAS', 'LOUP']),
+            'orange': nw.get('orange', ['JARDIN', 'BATEAU', 'PIERRE']),
         }
 
-        # ── Response keys (3-choice) ────────────────────────────────
         mode = self.settings.mode
         if mode == 'fmri':
             keys_cfg = self.task_config.get('response_keys_fmri', {})
@@ -92,14 +79,13 @@ class StroopTask(BaseTask):
             keys_cfg = self.task_config.get('response_keys_pc', {})
 
         self._color_to_key = {
-            'red':    keys_cfg.get('red',    'left'),
+            'rouge':  keys_cfg.get('rouge',  'left'),
             'orange': keys_cfg.get('orange', 'down'),
-            'green':  keys_cfg.get('green',  'right'),
+            'vert':   keys_cfg.get('vert',   'right'),
         }
         self._key_to_color = {v: k for k, v in self._color_to_key.items()}
         self._valid_keys = list(self._color_to_key.values())
 
-        # ── TTL codes ────────────────────────────────────────────────
         self._ttl = self.task_config.get('ttl_codes', {})
 
     # ═════════════════════════════════════════════════════════════════
@@ -107,22 +93,22 @@ class StroopTask(BaseTask):
     # ═════════════════════════════════════════════════════════════════
 
     def _get_instruction_text(self) -> str:
-        k_r = self._color_to_key['red'].upper()
+        k_r = self._color_to_key['rouge'].upper()
         k_o = self._color_to_key['orange'].upper()
-        k_g = self._color_to_key['green'].upper()
+        k_v = self._color_to_key['vert'].upper()
         total = sum(b.get('n_trials', 0) for b in self.block_sequence)
 
         return (
-            f"Stroop — Color naming\n\n"
-            f"Design: {self.design.get('name', '')}\n"
-            f"Total: {total} trials\n\n"
-            f"Name the INK COLOR of each word.\n"
-            f"Ignore what the word says!\n\n"
-            f"  RED    ->  [{k_r}]\n"
-            f"  ORANGE ->  [{k_o}]\n"
-            f"  GREEN  ->  [{k_g}]\n\n"
-            f"Be as FAST and ACCURATE as possible.\n\n"
-            f"Press any key to continue..."
+            f"Stroop — Denomination de couleur\n\n"
+            f"Design : {self.design.get('name', '')}\n"
+            f"Total : {total} essais\n\n"
+            f"Nommez la COULEUR DE L'ENCRE de chaque mot.\n"
+            f"Ignorez ce que le mot dit !\n\n"
+            f"  ROUGE   ->  [{k_r}]\n"
+            f"  ORANGE  ->  [{k_o}]\n"
+            f"  VERT    ->  [{k_v}]\n\n"
+            f"Repondez le plus VITE et PRECISEMENT possible.\n\n"
+            f"Appuyez sur une touche pour continuer..."
         )
 
     def _get_block_instruction(self, block_idx: int,
@@ -131,16 +117,15 @@ class StroopTask(BaseTask):
         if instr_dur <= 0:
             return None
 
-        k_r = self._color_to_key['red'].upper()
+        k_r = self._color_to_key['rouge'].upper()
         k_o = self._color_to_key['orange'].upper()
-        k_g = self._color_to_key['green'].upper()
+        k_v = self._color_to_key['vert'].upper()
         n = len(self.block_sequence)
-        cond = block_def['condition'].upper()
 
         return (
-            f"Block {block_idx + 1}/{n}  ({cond})\n\n"
-            f"Name the INK COLOR\n\n"
-            f"RED=[{k_r}]  ORANGE=[{k_o}]  GREEN=[{k_g}]"
+            f"Bloc {block_idx + 1}/{n}\n\n"
+            f"Nommez la COULEUR DE L'ENCRE\n\n"
+            f"ROUGE=[{k_r}]  ORANGE=[{k_o}]  VERT=[{k_v}]"
         )
 
     # ═════════════════════════════════════════════════════════════════
@@ -148,17 +133,6 @@ class StroopTask(BaseTask):
     # ═════════════════════════════════════════════════════════════════
 
     def generate_trials(self, block_def: dict) -> list:
-        """
-        Generate trial list for one block.
-
-        Each trial = (word, ink_color, trial_type)
-
-        Block types:
-            neutral:      all neutral trials
-            congruent:    50% congruent + 50% neutral (mixed)
-            incongruent:  50% incongruent + 50% neutral (mixed)
-            mixed:        equal mix of all three types
-        """
         condition = block_def['condition']
         n = block_def['n_trials']
         prop_mix = self.design.get('prop_neutral_mix', 0.5)
@@ -191,44 +165,33 @@ class StroopTask(BaseTask):
             trials = self._gen_neutral(n)
 
         random.shuffle(trials)
-        # Desequence on ink_color to avoid >3 same response in a row
         trials = desequence(trials, key_func=lambda t: t[1], max_consecutive=3)
         return trials
 
-    def _gen_congruent(self, n: int) -> list:
-        """Generate n congruent trials (word == ink color)."""
+    def _gen_congruent(self, n):
         trials = []
-        colors = self.INK_COLORS.copy()
         for i in range(n):
-            c = colors[i % len(colors)]
-            word = self._color_words[c]
-            trials.append((word, c, 'congruent'))
+            c = self._ink_colors[i % len(self._ink_colors)]
+            trials.append((self._color_words[c], c, 'congruent'))
         random.shuffle(trials)
         return trials
 
-    def _gen_incongruent(self, n: int) -> list:
-        """Generate n incongruent trials (word != ink color)."""
+    def _gen_incongruent(self, n):
         trials = []
         for i in range(n):
-            ink = self.INK_COLORS[i % len(self.INK_COLORS)]
-            # Pick a word from a DIFFERENT color
-            other_colors = [c for c in self.INK_COLORS if c != ink]
-            word_color = random.choice(other_colors)
-            word = self._color_words[word_color]
-            trials.append((word, ink, 'incongruent'))
+            ink = self._ink_colors[i % len(self._ink_colors)]
+            others = [c for c in self._ink_colors if c != ink]
+            word_c = random.choice(others)
+            trials.append((self._color_words[word_c], ink, 'incongruent'))
         random.shuffle(trials)
         return trials
 
-    def _gen_neutral(self, n: int) -> list:
-        """Generate n neutral trials (non-color word in colored ink)."""
+    def _gen_neutral(self, n):
         trials = []
         for i in range(n):
-            ink = self.INK_COLORS[i % len(self.INK_COLORS)]
-            # Pick a neutral word matched to any color-word length
-            # Use words matched to the ink color's word length
-            word_list = self._neutral_words.get(ink, ['XXX'])
-            word = random.choice(word_list)
-            trials.append((word, ink, 'neutral'))
+            ink = self._ink_colors[i % len(self._ink_colors)]
+            wlist = self._neutral_words.get(ink, ['XXX'])
+            trials.append((random.choice(wlist), ink, 'neutral'))
         random.shuffle(trials)
         return trials
 
@@ -238,11 +201,6 @@ class StroopTask(BaseTask):
 
     def run_trial(self, trial_data, block_idx: int, trial_idx: int,
                   block_def: dict, **kwargs) -> dict:
-        """
-        One trial: fixation(300ms) -> colored word(1200ms) -> ITI(500ms).
-
-        Responses collected during stimulus + ITI phases.
-        """
         word, ink_color, trial_type = trial_data
 
         fix_dur = self.design.get('fixation_duration', 0.3)
@@ -257,25 +215,22 @@ class StroopTask(BaseTask):
         response_key = None
         response_color = None
 
-        # ── Phase 1: Fixation (300ms) ────────────────────────────────
+        # ── Fixation 300ms ───────────────────────────────────────────
         self._fixation.draw()
         self.win.flip()
-        fix_onset = self.clock.time
-        fix_deadline = fix_onset + fix_dur
-
-        while self.clock.time < fix_deadline:
+        deadline = self.clock.time + fix_dur
+        while self.clock.time < deadline:
             self._fixation.draw()
             self.win.flip()
-            self.get_keys(key_list=[])  # escape check only
+            self.get_keys(key_list=[])
 
-        # ── Phase 2: Colored word (1200ms) ───────────────────────────
+        # ── Mot colore 1200ms ────────────────────────────────────────
         self._word_stim.text = word
         self._word_stim.color = self._color_rgb[ink_color]
         self._word_stim.draw()
         self.win.flip()
         stim_onset = self.clock.time
 
-        # TTL
         ttl_code = self._ttl.get(f'stim_{trial_type}', 0)
         if ttl_code:
             self.hardware.send_trigger(ttl_code)
@@ -284,8 +239,8 @@ class StroopTask(BaseTask):
             f"B{block_idx}_T{trial_idx}_t{stim_onset:.3f}"
         )
 
-        stim_deadline = stim_onset + stim_dur
-        while self.clock.time < stim_deadline:
+        deadline = stim_onset + stim_dur
+        while self.clock.time < deadline:
             if not responded:
                 keys = self.get_keys(key_list=self._valid_keys)
                 if keys:
@@ -302,12 +257,11 @@ class StroopTask(BaseTask):
             self._word_stim.draw()
             self.win.flip()
 
-        # ── Phase 3: ITI fixation (500ms) ────────────────────────────
+        # ── ITI 500ms ────────────────────────────────────────────────
         self._fixation.draw()
         self.win.flip()
-        iti_deadline = self.clock.time + iti_dur
-
-        while self.clock.time < iti_deadline:
+        deadline = self.clock.time + iti_dur
+        while self.clock.time < deadline:
             if not responded:
                 keys = self.get_keys(key_list=self._valid_keys)
                 if keys:
@@ -324,10 +278,8 @@ class StroopTask(BaseTask):
             self._fixation.draw()
             self.win.flip()
 
-        # ── Classify ─────────────────────────────────────────────────
         is_correct = (response_color == ink_color) if responded else False
 
-        # ── Record ───────────────────────────────────────────────────
         record = self._base_record(block_idx, trial_idx, block_def)
         record.update({
             'block_condition': block_def['condition'],
@@ -370,11 +322,9 @@ class StroopTask(BaseTask):
         else:
             tag, sym = 'ERR ', SYM_ERR
         rt_s = f"{rt * 1000:5.0f}ms" if rt and rt > 0 else "    - "
-        # Color indicator
-        ink_mark = ink[0].upper()
         print(
             f"  B{bi:02d} T{ti:02d} | t={onset:8.3f}s | "
-            f"{tt} | {word:>8s} [{ink_mark}] | {tag} {sym} | {rt_s}"
+            f"{tt} | {word:>8s} [{ink[:3]}] | {tag} {sym} | {rt_s}"
         )
 
     def _print_task_stats(self) -> None:
@@ -388,65 +338,43 @@ class StroopTask(BaseTask):
         misses = sum(r.get('is_miss', 0) for r in records)
 
         print(f"\n{'=' * 60}")
-        print(f"  STROOP RESULTS - {correct}/{total} "
+        print(f"  STROOP - {correct}/{total} "
               f"({100 * correct / total:.1f}%)")
-        print(f"  Correct={correct}  Errors={errors}  Misses={misses}")
+        print(f"  Correct={correct}  Erreurs={errors}  Miss={misses}")
         print(f"  {'-' * 54}")
 
         by_type = defaultdict(list)
         for r in records:
             by_type[r['trial_type']].append(r)
 
-        rt_by_type = {}
-        for ttype in ['congruent', 'incongruent', 'neutral']:
-            recs = by_type.get(ttype, [])
+        rt_by = {}
+        for tt in ['congruent', 'incongruent', 'neutral']:
+            recs = by_type.get(tt, [])
             if not recs:
                 continue
             n = len(recs)
             acc = 100 * sum(r['is_correct'] for r in recs) / n
             rts = [r['rt'] for r in recs if r['rt'] > 0 and r['is_correct']]
-            mean_rt = sum(rts) / len(rts) if rts else 0
-            rt_by_type[ttype] = mean_rt
-            rt_str = f"{mean_rt * 1000:.0f}ms" if rts else "-"
+            m = sum(rts) / len(rts) if rts else 0
+            rt_by[tt] = m
+            rt_s = f"{m * 1000:.0f}ms" if rts else "-"
             err = sum(r.get('is_error', 0) for r in recs)
             mis = sum(r.get('is_miss', 0) for r in recs)
             print(
-                f"  {ttype:12s}: {acc:5.1f}% ({n:3d} trials) | "
-                f"RT={rt_str:>6s} | Err={err:2d} Miss={mis:2d}"
+                f"  {tt:12s}: {acc:5.1f}% ({n:3d}) | "
+                f"RT={rt_s:>6s} | Err={err:2d} Miss={mis:2d}"
             )
 
-        # ── Stroop effects ───────────────────────────────────────────
-        con_rt = rt_by_type.get('congruent', 0)
-        inc_rt = rt_by_type.get('incongruent', 0)
-        neu_rt = rt_by_type.get('neutral', 0)
+        con = rt_by.get('congruent', 0)
+        inc = rt_by.get('incongruent', 0)
+        neu = rt_by.get('neutral', 0)
 
         print(f"  {'-' * 54}")
-
-        if inc_rt > 0 and con_rt > 0:
-            stroop_effect = (inc_rt - con_rt) * 1000
-            print(f"  Stroop effect (INC-CON):      {stroop_effect:+.0f}ms")
-
-        if inc_rt > 0 and neu_rt > 0:
-            interference = (inc_rt - neu_rt) * 1000
-            print(f"  Interference (INC-NEU):       {interference:+.0f}ms")
-
-        if neu_rt > 0 and con_rt > 0:
-            facilitation = (neu_rt - con_rt) * 1000
-            print(f"  Facilitation (NEU-CON):       {facilitation:+.0f}ms")
-
-        # ── Per ink-color accuracy ───────────────────────────────────
-        by_ink = defaultdict(list)
-        for r in records:
-            by_ink[r['ink_color']].append(r)
-
-        if len(by_ink) > 1:
-            print(f"  {'-' * 54}")
-            for color in sorted(by_ink):
-                recs = by_ink[color]
-                n = len(recs)
-                acc = 100 * sum(r['is_correct'] for r in recs) / n
-                rts = [r['rt'] for r in recs if r['rt'] > 0 and r['is_correct']]
-                rt_str = f"{sum(rts)/len(rts)*1000:.0f}ms" if rts else "-"
-                print(f"  ink={color:7s}: {acc:5.1f}% ({n} trials) | RT={rt_str}")
+        if inc > 0 and con > 0:
+            print(f"  Effet Stroop  (INC-CON): {(inc-con)*1000:+.0f}ms")
+        if inc > 0 and neu > 0:
+            print(f"  Interference  (INC-NEU): {(inc-neu)*1000:+.0f}ms")
+        if neu > 0 and con > 0:
+            print(f"  Facilitation  (NEU-CON): {(neu-con)*1000:+.0f}ms")
 
         print(f"{'=' * 60}\n")

@@ -1,13 +1,3 @@
-# ═══════════════════════════════════════════════════════════════════
-# Stroop Task — Design Configuration
-#
-# Reference: Banich et al. (2000) blocked fMRI Stroop
-#   - 3 ink colors: red, orange, green
-#   - 3 trial types: congruent, incongruent, neutral
-#   - Trial: 300ms fixation + 1200ms stimulus + 500ms ITI = 2s
-#   - Neutral trials intermixed 50:50 in con/inc blocks
-# ═══════════════════════════════════════════════════════════════════
-
 task_name: stroop
 display_name: "Stroop"
 
@@ -15,32 +5,30 @@ stimulus:
   word_height: 0.15
   fixation_height: 0.1
 
-# PsychoPy RGB norm (-1 to 1)
 colors:
-  red:    [1.0, -1.0, -1.0]
+  rouge:  [1.0, -1.0, -1.0]
   orange: [1.0,  0.3, -1.0]
-  green:  [-1.0, 0.8, -1.0]
+  vert:   [-1.0, 0.8, -1.0]
 
 color_words:
-  red: "RED"
+  rouge:  "ROUGE"
   orange: "ORANGE"
-  green: "GREEN"
+  vert:   "VERT"
 
-# Neutral words matched for length with their color-word counterpart
 neutral_words:
-  red:    ["LOT", "SET", "PIN", "MAP", "PEN"]
-  green:  ["CHAIR", "PLANE", "TABLE", "SHELF", "STONE"]
-  orange: ["BRIDGE", "PLANET", "STAPLE", "MARBLE", "PENCIL"]
+  rouge:  ["TABLE", "PORTE", "LIVRE", "CHAMP", "PLAGE"]
+  vert:   ["PONT", "BRAS", "LOUP", "TOIT", "MURS"]
+  orange: ["JARDIN", "BATEAU", "PIERRE", "MARCHE", "FEUTRE"]
 
 response_keys_pc:
-  red: "left"
+  rouge:  "left"
   orange: "down"
-  green: "right"
+  vert:   "right"
 
 response_keys_fmri:
-  red: "b"
+  rouge:  "b"
   orange: "y"
-  green: "g"
+  vert:   "g"
 
 ttl_codes:
   stim_congruent: 110
@@ -55,7 +43,7 @@ ttl_codes:
 designs:
 
   1:
-    name: "Blocked Order A (N-I-N-C x4, ~13min)"
+    name: "Bloc Ordre A (N-I-N-C x4, ~13min)"
     paradigm: block
     fixation_duration: 0.3
     stim_duration: 1.2
@@ -65,7 +53,6 @@ designs:
     pre_block_fixation: 1.0
     prop_neutral_mix: 0.5
     blocks:
-      # N-I-N-C repeated 4 times
       - { condition: neutral,      n_trials: 18 }
       - { condition: incongruent,  n_trials: 18 }
       - { condition: neutral,      n_trials: 18 }
@@ -84,7 +71,7 @@ designs:
       - { condition: congruent,    n_trials: 18 }
 
   2:
-    name: "Blocked Order B (N-C-N-I x4, ~13min)"
+    name: "Bloc Ordre B (N-C-N-I x4, ~13min)"
     paradigm: block
     fixation_duration: 0.3
     stim_duration: 1.2
@@ -94,7 +81,6 @@ designs:
     pre_block_fixation: 1.0
     prop_neutral_mix: 0.5
     blocks:
-      # Counterbalanced: N-C-N-I repeated 4 times
       - { condition: neutral,      n_trials: 18 }
       - { condition: congruent,    n_trials: 18 }
       - { condition: neutral,      n_trials: 18 }
@@ -113,7 +99,7 @@ designs:
       - { condition: incongruent,  n_trials: 18 }
 
   3:
-    name: "Short blocked (N-I-N-C x2, ~7min)"
+    name: "Bloc court (N-I-N-C x2, ~7min)"
     paradigm: block
     fixation_duration: 0.3
     stim_duration: 1.2
@@ -133,7 +119,7 @@ designs:
       - { condition: congruent,    n_trials: 18 }
 
   4:
-    name: "Event-related mixed (~9min)"
+    name: "Event-related mixte (~9min)"
     paradigm: event
     fixation_duration: 0.3
     stim_duration: 1.2

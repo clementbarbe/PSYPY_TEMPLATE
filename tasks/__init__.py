@@ -1,6 +1,5 @@
 """
 Task package — lazy registration.
-PsychoPy is NOT imported until get_task() is called.
 """
 
 from tasks.registry import register_lazy, get_task, list_tasks

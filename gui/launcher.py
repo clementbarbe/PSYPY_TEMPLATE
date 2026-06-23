@@ -1,12 +1,8 @@
 """
-Minimal experiment menu — sober design.
+Minimal experiment menu.
 
-Flow:
-    1. User fills in config (name, session, screen, etc.)
-    2. Goes to the task tab
-    3. Clicks a design button -> experiment launches directly
-
-No experimental logic here. Only parameter collection.
+One window, one config group, one tab per task.
+Click a design button -> experiment starts.
 """
 
 from __future__ import annotations
@@ -18,7 +14,6 @@ from PyQt6.QtWidgets import (
     QGridLayout, QLabel, QLineEdit, QSpinBox, QComboBox,
     QCheckBox, QGroupBox, QTabWidget, QPushButton, QMessageBox,
 )
-from PyQt6.QtGui import QFont
 
 from config.settings import ExperimentSettings
 from gui.styles import STYLESHEET
@@ -26,197 +21,142 @@ from gui.task_panels import get_registered_panels
 
 
 class ExperimentMenu(QMainWindow):
-    """Main configuration menu."""
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Configuration Experimentale")
-        self.setFont(QFont("Segoe UI", 12))
         self.setStyleSheet(STYLESHEET)
-        self.setMinimumWidth(600)
-
+        self.setMinimumWidth(520)
         self.final_config = None
-        self._build_ui()
+        self._build()
 
-    # ═════════════════════════════════════════════════════════════════
-    # UI
-    # ═════════════════════════════════════════════════════════════════
-
-    def _build_ui(self):
+    def _build(self):
         central = QWidget()
+        central.setObjectName("central")
         self.setCentralWidget(central)
-        main = QVBoxLayout(central)
-        main.setContentsMargins(16, 16, 16, 16)
-        main.setSpacing(12)
+        root = QVBoxLayout(central)
+        root.setContentsMargins(12, 12, 12, 12)
+        root.setSpacing(10)
 
-        self._build_config(main)
-        self._build_tabs(main)
+        # ── Config ───────────────────────────────────────────────────
+        cfg = QGroupBox("Configuration")
+        g = QGridLayout(cfg)
+        g.setSpacing(6)
 
-    def _build_config(self, parent):
-        group = QGroupBox("Configuration")
-        grid = QGridLayout(group)
-        grid.setSpacing(8)
-        grid.setContentsMargins(12, 16, 12, 12)
-
-        # ── Row 0: Nom, Session, Ecran, Mode ────────────────────────
-        grid.addWidget(QLabel("Nom:"), 0, 0)
+        g.addWidget(QLabel("Participant :"), 0, 0)
         self.txt_nom = QLineEdit()
-        self.txt_nom.setPlaceholderText("ID participant")
-        self.txt_nom.setFixedWidth(150)
-        grid.addWidget(self.txt_nom, 0, 1)
+        self.txt_nom.setPlaceholderText("ID")
+        self.txt_nom.setFixedWidth(130)
+        g.addWidget(self.txt_nom, 0, 1)
 
-        grid.addWidget(QLabel("Session:"), 0, 2)
-        self.spin_session = QSpinBox()
-        self.spin_session.setRange(1, 20)
-        self.spin_session.setValue(1)
-        self.spin_session.setFixedWidth(60)
-        grid.addWidget(self.spin_session, 0, 3)
+        g.addWidget(QLabel("Session :"), 0, 2)
+        self.spin_ses = QSpinBox()
+        self.spin_ses.setRange(1, 20)
+        self.spin_ses.setValue(1)
+        self.spin_ses.setFixedWidth(55)
+        g.addWidget(self.spin_ses, 0, 3)
 
-        grid.addWidget(QLabel("Ecran:"), 0, 4)
-        self.spin_screen = QSpinBox()
-        self.spin_screen.setRange(0, len(QApplication.screens()) - 1)
-        self.spin_screen.setValue(0)
-        self.spin_screen.setFixedWidth(60)
-        grid.addWidget(self.spin_screen, 0, 5)
+        g.addWidget(QLabel("Ecran :"), 0, 4)
+        self.spin_scr = QSpinBox()
+        self.spin_scr.setRange(0, max(0, len(QApplication.screens()) - 1))
+        self.spin_scr.setValue(0)
+        self.spin_scr.setFixedWidth(55)
+        g.addWidget(self.spin_scr, 0, 5)
 
-        grid.addWidget(QLabel("Mode:"), 0, 6)
+        g.addWidget(QLabel("Mode :"), 0, 6)
         self.combo_mode = QComboBox()
         self.combo_mode.addItems(["PC", "fMRI"])
-        self.combo_mode.setFixedWidth(80)
-        grid.addWidget(self.combo_mode, 0, 7)
+        self.combo_mode.setFixedWidth(70)
+        g.addWidget(self.combo_mode, 0, 7)
 
-        # ── Row 1: Checkboxes ────────────────────────────────────────
         row1 = QHBoxLayout()
-        row1.setSpacing(20)
-
-        self.chk_save = QCheckBox("Enregistrer")
+        row1.setSpacing(16)
+        self.chk_save = QCheckBox("Save")
         self.chk_save.setChecked(True)
         row1.addWidget(self.chk_save)
 
-        self.chk_parport = QCheckBox("Port Parallele")
+        self.chk_parport = QCheckBox("Port parallele")
         row1.addWidget(self.chk_parport)
 
-        sep = QLabel("|")
-        sep.setStyleSheet("color: #a0a0a0;")
-        row1.addWidget(sep)
+        self.chk_et = QCheckBox("Eye-tracker")
+        row1.addWidget(self.chk_et)
 
-        self.chk_eyetracker = QCheckBox("Eye Tracker")
-        row1.addWidget(self.chk_eyetracker)
-
-        self.btn_et_reset = QPushButton("Force Reset")
-        self.btn_et_reset.setObjectName("resetBtn")
-        self.btn_et_reset.setFixedWidth(90)
-        self.btn_et_reset.clicked.connect(self._force_reset_eyetracker)
-        row1.addWidget(self.btn_et_reset)
+        self.btn_reset = QPushButton("Force Reset")
+        self.btn_reset.setObjectName("resetBtn")
+        self.btn_reset.setFixedWidth(85)
+        self.btn_reset.clicked.connect(self._reset_et)
+        row1.addWidget(self.btn_reset)
 
         row1.addStretch()
-        grid.addLayout(row1, 1, 0, 1, 8)
+        g.addLayout(row1, 1, 0, 1, 8)
 
-        parent.addWidget(group)
+        root.addWidget(cfg)
 
-    def _build_tabs(self, parent):
+        # ── Tabs ─────────────────────────────────────────────────────
         self.tabs = QTabWidget()
-
         panels = get_registered_panels()
-        if not panels:
-            lbl = QLabel("Aucune tache enregistree.")
-            lbl.setStyleSheet("padding: 20px; color: #808080;")
-            w = QWidget()
-            lo = QVBoxLayout(w)
-            lo.addWidget(lbl)
-            self.tabs.addTab(w, "Vide")
-        else:
-            for name, panel_cls in panels.items():
-                panel = panel_cls(self)
-                self.tabs.addTab(panel, name)
+        for name, cls in panels.items():
+            self.tabs.addTab(cls(self), name)
+        root.addWidget(self.tabs)
 
-        parent.addWidget(self.tabs)
+    # ── Validation + launch ──────────────────────────────────────────
 
-    # ═════════════════════════════════════════════════════════════════
-    # Validation + Launch
-    # ═════════════════════════════════════════════════════════════════
-
-    def validate_config(self) -> ExperimentSettings | None:
+    def validate(self) -> ExperimentSettings | None:
         nom = self.txt_nom.text().strip()
         if not nom:
             QMessageBox.warning(self, "Erreur", "Nom du participant requis.")
             return None
-
-        # Sanitize
-        safe_nom = ''.join(
-            c for c in nom if c.isalnum() or c in '-_'
-        )
-        if not safe_nom:
+        safe = ''.join(c for c in nom if c.isalnum() or c in '-_')
+        if not safe:
             QMessageBox.warning(self, "Erreur", "Nom invalide.")
             return None
-
         mode = self.combo_mode.currentText().lower()
-
         return ExperimentSettings(
-            participant_id=safe_nom,
-            session=f"{self.spin_session.value():02d}",
-            scanner_name='pc',
+            participant_id=safe,
+            session=f"{self.spin_ses.value():02d}",
             mode=mode,
             fullscreen=(mode == 'fmri'),
-            screen_index=self.spin_screen.value(),
-            eyetracker_enabled=self.chk_eyetracker.isChecked(),
+            screen_index=self.spin_scr.value(),
+            eyetracker_enabled=self.chk_et.isChecked(),
             trigger_output_enabled=self.chk_parport.isChecked(),
             save_data=self.chk_save.isChecked(),
         )
 
     def run_experiment(self, task_params: dict):
-        """Called by task panels when a design button is clicked."""
-        settings = self.validate_config()
+        settings = self.validate()
         if settings is None:
             return
-
         self.final_config = {
             'settings': settings,
             'task_name': task_params['task_name'],
             'design_id': task_params.get('design_id', 1),
             'extra_params': task_params.get('extra_params', {}),
         }
-
         self.close()
         app = QApplication.instance()
         if app:
             app.quit()
 
-    def get_config(self) -> dict | None:
+    def get_config(self):
         return self.final_config
 
-    # ═════════════════════════════════════════════════════════════════
-    # Eye Tracker Force Reset
-    # ═════════════════════════════════════════════════════════════════
-
-    def _force_reset_eyetracker(self):
-        """Force reset a stuck EyeLink tracker."""
+    def _reset_et(self):
         reply = QMessageBox.question(
             self, "Force Reset",
-            "Reinitialiser l'eye-tracker ?\n"
-            "Ceci ferme toute connexion active et reconnecte.",
+            "Reinitialiser l'eye-tracker ?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-
         from hardware.eyetracker import EyeTracker
-        success, msg = EyeTracker.force_reset()
-
-        if success:
+        ok, msg = EyeTracker.force_reset()
+        if ok:
             QMessageBox.information(self, "Eye Tracker", msg)
         else:
             QMessageBox.warning(self, "Eye Tracker", msg)
 
 
 def show_menu() -> dict | None:
-    """
-    Show the configuration menu. Block until closed.
-
-    Returns:
-        dict with 'settings', 'task_name', 'design_id', 'extra_params'
-        or None if user closed without launching.
-    """
     app = QApplication.instance() or QApplication(sys.argv)
     menu = ExperimentMenu()
     menu.show()
