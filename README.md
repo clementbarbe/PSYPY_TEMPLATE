@@ -232,6 +232,7 @@ _REGISTRY['my_scanner'] = MyScannerConfig()
  | self.hardware.send_eyetracker_message(msg)	| Timestamped ET message | 
 
 ### Audio (via self.audio)
+
 | Function	| What it does | 
 |---|---|
  | self.audio.preload('name', 'path/file.wav')	|  Load file into memory (zero latency later) | 
@@ -242,6 +243,7 @@ _REGISTRY['my_scanner'] = MyScannerConfig()
  | self.audio.stop_all()	 | Stop everything | 
 
 ### Sequence generation (import from tasks.utils)
+
  | Function | 	What it does | 
  |---|---|
  | desequence(trials, key_func, max_consecutive=4)	 | Shuffle with no long runs of same condition | 
