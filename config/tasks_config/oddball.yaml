@@ -1,0 +1,72 @@
+task_name: oddball
+display_name: "Oddball Auditif"
+
+stimulus:
+  fixation_height: 0.1
+
+# ── Audio parameters ─────────────────────────────────────────────────
+audio:
+  standard_freq: 1000
+  deviant_freq:  1200
+  tone_duration: 0.2
+  tone_volume:   0.8
+
+ttl_codes:
+  stim_standard: 120
+  stim_deviant:  121
+  response_hit:  170
+  response_fa:   171
+
+designs:
+
+  1:
+    name: "Standard 80/20 (~8min)"
+    paradigm: block
+    rest_duration: 12.0
+    instruction_duration: 3.0
+    pre_block_fixation: 1.0
+    soa_min: 1.2
+    soa_max: 1.8
+    prop_deviant: 0.20
+    blocks:
+      - { n_trials: 80 }
+      - { n_trials: 80 }
+      - { n_trials: 80 }
+
+  2:
+    name: "Dense 80/20 (~5min)"
+    paradigm: block
+    rest_duration: 10.0
+    instruction_duration: 3.0
+    pre_block_fixation: 1.0
+    soa_min: 1.0
+    soa_max: 1.5
+    prop_deviant: 0.20
+    blocks:
+      - { n_trials: 100 }
+      - { n_trials: 100 }
+
+  3:
+    name: "Court 80/20 (~3min)"
+    paradigm: block
+    rest_duration: 8.0
+    instruction_duration: 3.0
+    pre_block_fixation: 1.0
+    soa_min: 1.2
+    soa_max: 1.8
+    prop_deviant: 0.20
+    blocks:
+      - { n_trials: 80 }
+
+  4:
+    name: "70/30 plus de deviants (~7min)"
+    paradigm: block
+    rest_duration: 10.0
+    instruction_duration: 3.0
+    pre_block_fixation: 1.0
+    soa_min: 1.2
+    soa_max: 1.8
+    prop_deviant: 0.30
+    blocks:
+      - { n_trials: 80 }
+      - { n_trials: 80 }

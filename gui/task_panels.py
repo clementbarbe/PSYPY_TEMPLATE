@@ -189,3 +189,48 @@ class StroopPanel(QWidget):
                 'rest_duration': 5.0,
             },
         })
+
+# ═════════════════════════════════════════════════════════════════════
+# Oddball Auditif
+# ═════════════════════════════════════════════════════════════════════
+
+@register_panel('Oddball')
+class OddballPanel(QWidget):
+    TASK = 'oddball'
+
+    def __init__(self, menu):
+        super().__init__()
+        self.menu = menu
+        cfg = load_task_config(self.TASK)
+        self.designs = cfg.get('designs', {})
+        lo = QVBoxLayout(self)
+        lo.setSpacing(8)
+
+        lo.addWidget(_make_design_group(self, self.TASK, self.designs,
+                                        self._run))
+
+        info = QLabel(
+            "Son standard (grave) : ne rien faire\n"
+            "Son deviant  (aigu)  : appuyer\n\n"
+            "D1: 80/20 standard   D2: 80/20 dense\n"
+            "D3: 80/20 court      D4: 70/30"
+        )
+        info.setStyleSheet("color: #808080; font-size: 11px; padding: 4px;")
+        lo.addWidget(info)
+
+        grp, self.sp = _make_training_group(30, self._train)
+        lo.addWidget(grp)
+        lo.addStretch()
+
+    def _run(self, did):
+        self.menu.run_experiment({'task_name': self.TASK, 'design_id': did})
+
+    def _train(self):
+        n = self.sp.value()
+        self.menu.run_experiment({
+            'task_name': self.TASK, 'design_id': 3,
+            'extra_params': {
+                'block_sequence': [{'n_trials': n}],
+                'rest_duration': 5.0,
+            },
+        })
