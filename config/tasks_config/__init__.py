@@ -237,17 +237,21 @@ _BUILTIN_DEFAULTS: dict[str, dict] = {
         'stimulus': {'word_height': 0.15, 'fixation_height': 0.1},
         'colors': {
             'rouge': [1.0, -1.0, -1.0],
-            'orange': [1.0, 0.3, -1.0],
+            'bleu': [-1.0, -1.0, 1.0],
             'vert': [-1.0, 0.8, -1.0],
         },
-        'color_words': {'rouge': 'ROUGE', 'orange': 'ORANGE', 'vert': 'VERT'},
-        'neutral_words': {
-            'rouge': ['TABLE', 'PORTE', 'LIVRE', 'CHAMP', 'PLAGE'],
-            'vert': ['PONT', 'BRAS', 'LOUP', 'TOIT', 'MURS'],
-            'orange': ['JARDIN', 'BATEAU', 'PIERRE', 'MARCHE', 'FEUTRE'],
-        },
-        'response_keys_pc': {'rouge': 'left', 'orange': 'down', 'vert': 'right'},
-        'response_keys_fmri': {'rouge': 'b', 'orange': 'y', 'vert': 'g'},
+        'color_words': {'rouge': 'ROUGE', 'bleu': 'BLEU', 'vert': 'VERT'},
+        'neutral_words': ['XXXX', '%%%%', 'OOOO'],
+        'incongruent_pairs': [
+            {'word': 'ROUGE', 'ink': 'bleu'}, {'word': 'ROUGE', 'ink': 'vert'},
+            {'word': 'BLEU', 'ink': 'rouge'}, {'word': 'BLEU', 'ink': 'vert'},
+            {'word': 'VERT', 'ink': 'rouge'}, {'word': 'VERT', 'ink': 'bleu'},
+        ],
+        'response_keys_pc': {'rouge': 'left', 'bleu': 'down', 'vert': 'right'},
+        'response_keys_fmri': {'rouge': 'b', 'bleu': 'y', 'vert': 'g'},
+        'show_key_reminder': True,
+        'key_reminder_height': 0.04,
+        'key_reminder_y': -0.85,
         'ttl_codes': {
             'stim_congruent': 110, 'stim_incongruent': 111, 'stim_neutral': 112,
             'response_correct': 160, 'response_incorrect': 161,
@@ -255,57 +259,47 @@ _BUILTIN_DEFAULTS: dict[str, dict] = {
         },
         'designs': {
             1: {
-                'name': 'Bloc Ordre A (N-I-N-C x4)',
+                'name': 'Initial 15x10 (~7min20)',
                 'paradigm': 'block',
-                'fixation_duration': 0.3, 'stim_duration': 1.2,
-                'iti_duration': 0.5, 'rest_duration': 10.0,
-                'instruction_duration': 3.0, 'pre_block_fixation': 1.0,
-                'prop_neutral_mix': 0.5,
+                'fixation_duration': 0.5, 'stim_duration': 1.2,
+                'iti_duration': 0.3, 'rest_duration': 10.0,
+                'instruction_duration': 3.0, 'pre_block_fixation': 0.0,
                 'blocks': [
-                    {'condition': 'neutral', 'n_trials': 18},
-                    {'condition': 'incongruent', 'n_trials': 18},
-                    {'condition': 'neutral', 'n_trials': 18},
-                    {'condition': 'congruent', 'n_trials': 18},
-                ] * 4,
+                    {'condition': c, 'n_trials': 10}
+                    for c in ['neutral', 'congruent', 'incongruent'] * 5
+                ],
             },
             2: {
-                'name': 'Bloc Ordre B (N-C-N-I x4)',
+                'name': 'Optimise 15x8 (~5min50)',
                 'paradigm': 'block',
-                'fixation_duration': 0.3, 'stim_duration': 1.2,
-                'iti_duration': 0.5, 'rest_duration': 10.0,
-                'instruction_duration': 3.0, 'pre_block_fixation': 1.0,
-                'prop_neutral_mix': 0.5,
+                'fixation_duration': 0.5, 'stim_duration': 1.2,
+                'iti_duration': 0.3, 'rest_duration': 8.0,
+                'instruction_duration': 3.0, 'pre_block_fixation': 0.0,
                 'blocks': [
-                    {'condition': 'neutral', 'n_trials': 18},
-                    {'condition': 'congruent', 'n_trials': 18},
-                    {'condition': 'neutral', 'n_trials': 18},
-                    {'condition': 'incongruent', 'n_trials': 18},
-                ] * 4,
+                    {'condition': c, 'n_trials': 8}
+                    for c in ['neutral', 'congruent', 'incongruent'] * 5
+                ],
             },
             3: {
-                'name': 'Bloc court (N-I-N-C x2)',
+                'name': 'Compact 12x10 (~5min30)',
                 'paradigm': 'block',
-                'fixation_duration': 0.3, 'stim_duration': 1.2,
-                'iti_duration': 0.5, 'rest_duration': 10.0,
-                'instruction_duration': 3.0, 'pre_block_fixation': 1.0,
-                'prop_neutral_mix': 0.5,
+                'fixation_duration': 0.5, 'stim_duration': 1.2,
+                'iti_duration': 0.3, 'rest_duration': 8.0,
+                'instruction_duration': 3.0, 'pre_block_fixation': 0.0,
                 'blocks': [
-                    {'condition': 'neutral', 'n_trials': 18},
-                    {'condition': 'incongruent', 'n_trials': 18},
-                    {'condition': 'neutral', 'n_trials': 18},
-                    {'condition': 'congruent', 'n_trials': 18},
-                ] * 2,
+                    {'condition': c, 'n_trials': 10}
+                    for c in ['neutral', 'congruent', 'incongruent'] * 4
+                ],
             },
             4: {
-                'name': 'Event-related mixte',
-                'paradigm': 'event',
-                'fixation_duration': 0.3, 'stim_duration': 1.2,
-                'iti_duration': 0.5, 'rest_duration': 12.0,
-                'instruction_duration': 3.0, 'pre_block_fixation': 1.0,
-                'prop_neutral_mix': 0.0,
+                'name': 'Final 9x15 (~5min25)',
+                'paradigm': 'block',
+                'fixation_duration': 0.5, 'stim_duration': 1.2,
+                'iti_duration': 0.3, 'rest_duration': 7.0,
+                'instruction_duration': 3.0, 'pre_block_fixation': 0.0,
                 'blocks': [
-                    {'condition': 'mixed', 'n_trials': 120,
-                     'prop_congruent': 0.33, 'prop_incongruent': 0.33},
+                    {'condition': c, 'n_trials': 15}
+                    for c in ['neutral', 'congruent', 'incongruent'] * 3
                 ],
             },
         },

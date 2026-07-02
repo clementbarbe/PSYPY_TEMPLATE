@@ -6,29 +6,40 @@ stimulus:
   fixation_height: 0.1
 
 colors:
-  rouge:  [1.0, -1.0, -1.0]
-  orange: [1.0,  0.3, -1.0]
-  vert:   [-1.0, 0.8, -1.0]
+  rouge: [1.0, -1.0, -1.0]
+  bleu:  [-1.0, -1.0, 1.0]
+  vert:  [-1.0, 0.8, -1.0]
 
 color_words:
-  rouge:  "ROUGE"
-  orange: "ORANGE"
-  vert:   "VERT"
+  rouge: "ROUGE"
+  bleu:  "BLEU"
+  vert:  "VERT"
 
-neutral_words:
-  rouge:  ["TABLE", "PORTE", "LIVRE", "CHAMP", "PLAGE"]
-  vert:   ["PONT", "BRAS", "LOUP", "TOIT", "MURS"]
-  orange: ["JARDIN", "BATEAU", "PIERRE", "MARCHE", "FEUTRE"]
+neutral_words: ["XXXX", "%%%%", "OOOO"]
+
+# Incongruent: toutes les combinaisons mot/couleur differentes
+incongruent_pairs:
+  - { word: "ROUGE", ink: "bleu" }
+  - { word: "ROUGE", ink: "vert" }
+  - { word: "BLEU",  ink: "rouge" }
+  - { word: "BLEU",  ink: "vert" }
+  - { word: "VERT",  ink: "rouge" }
+  - { word: "VERT",  ink: "bleu" }
 
 response_keys_pc:
-  rouge:  "left"
-  orange: "down"
-  vert:   "right"
+  rouge: "left"
+  bleu:  "down"
+  vert:  "right"
 
 response_keys_fmri:
-  rouge:  "b"
-  orange: "y"
-  vert:   "g"
+  rouge: "b"
+  bleu:  "y"
+  vert:  "g"
+
+# Rappel touches affiche en permanence en bas de l'ecran
+show_key_reminder: true
+key_reminder_height: 0.04
+key_reminder_y: -0.85
 
 ttl_codes:
   stim_congruent: 110
@@ -43,90 +54,96 @@ ttl_codes:
 designs:
 
   1:
-    name: "Bloc Ordre A (N-I-N-C x4, ~13min)"
+    name: "Initial 15x10 (~7min20)"
     paradigm: block
-    fixation_duration: 0.3
+    fixation_duration: 0.5
     stim_duration: 1.2
-    iti_duration: 0.5
+    iti_duration: 0.3
     rest_duration: 10.0
     instruction_duration: 3.0
-    pre_block_fixation: 1.0
-    prop_neutral_mix: 0.5
+    pre_block_fixation: 0.0
     blocks:
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: incongruent,  n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: congruent,    n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: incongruent,  n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: congruent,    n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: incongruent,  n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: congruent,    n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: incongruent,  n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: congruent,    n_trials: 18 }
+      - { condition: neutral,      n_trials: 10 }
+      - { condition: congruent,    n_trials: 10 }
+      - { condition: incongruent,  n_trials: 10 }
+      - { condition: neutral,      n_trials: 10 }
+      - { condition: congruent,    n_trials: 10 }
+      - { condition: incongruent,  n_trials: 10 }
+      - { condition: neutral,      n_trials: 10 }
+      - { condition: congruent,    n_trials: 10 }
+      - { condition: incongruent,  n_trials: 10 }
+      - { condition: neutral,      n_trials: 10 }
+      - { condition: congruent,    n_trials: 10 }
+      - { condition: incongruent,  n_trials: 10 }
+      - { condition: neutral,      n_trials: 10 }
+      - { condition: congruent,    n_trials: 10 }
+      - { condition: incongruent,  n_trials: 10 }
 
   2:
-    name: "Bloc Ordre B (N-C-N-I x4, ~13min)"
+    name: "Optimise 15x8 (~5min50)"
     paradigm: block
-    fixation_duration: 0.3
+    fixation_duration: 0.5
     stim_duration: 1.2
-    iti_duration: 0.5
-    rest_duration: 10.0
+    iti_duration: 0.3
+    rest_duration: 8.0
     instruction_duration: 3.0
-    pre_block_fixation: 1.0
-    prop_neutral_mix: 0.5
+    pre_block_fixation: 0.0
     blocks:
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: congruent,    n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: incongruent,  n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: congruent,    n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: incongruent,  n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: congruent,    n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: incongruent,  n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: congruent,    n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: incongruent,  n_trials: 18 }
+      - { condition: neutral,      n_trials: 8 }
+      - { condition: congruent,    n_trials: 8 }
+      - { condition: incongruent,  n_trials: 8 }
+      - { condition: neutral,      n_trials: 8 }
+      - { condition: congruent,    n_trials: 8 }
+      - { condition: incongruent,  n_trials: 8 }
+      - { condition: neutral,      n_trials: 8 }
+      - { condition: congruent,    n_trials: 8 }
+      - { condition: incongruent,  n_trials: 8 }
+      - { condition: neutral,      n_trials: 8 }
+      - { condition: congruent,    n_trials: 8 }
+      - { condition: incongruent,  n_trials: 8 }
+      - { condition: neutral,      n_trials: 8 }
+      - { condition: congruent,    n_trials: 8 }
+      - { condition: incongruent,  n_trials: 8 }
 
   3:
-    name: "Bloc court (N-I-N-C x2, ~7min)"
+    name: "Compact 12x10 (~5min30)"
     paradigm: block
-    fixation_duration: 0.3
+    fixation_duration: 0.5
     stim_duration: 1.2
-    iti_duration: 0.5
-    rest_duration: 10.0
+    iti_duration: 0.3
+    rest_duration: 8.0
     instruction_duration: 3.0
-    pre_block_fixation: 1.0
-    prop_neutral_mix: 0.5
+    pre_block_fixation: 0.0
     blocks:
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: incongruent,  n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: congruent,    n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: incongruent,  n_trials: 18 }
-      - { condition: neutral,      n_trials: 18 }
-      - { condition: congruent,    n_trials: 18 }
+      - { condition: neutral,      n_trials: 10 }
+      - { condition: congruent,    n_trials: 10 }
+      - { condition: incongruent,  n_trials: 10 }
+      - { condition: neutral,      n_trials: 10 }
+      - { condition: congruent,    n_trials: 10 }
+      - { condition: incongruent,  n_trials: 10 }
+      - { condition: neutral,      n_trials: 10 }
+      - { condition: congruent,    n_trials: 10 }
+      - { condition: incongruent,  n_trials: 10 }
+      - { condition: neutral,      n_trials: 10 }
+      - { condition: congruent,    n_trials: 10 }
+      - { condition: incongruent,  n_trials: 10 }
 
   4:
-    name: "Event-related mixte (~9min)"
-    paradigm: event
-    fixation_duration: 0.3
+    name: "Final 9x15 (~5min25)"
+    paradigm: block
+    fixation_duration: 0.5
     stim_duration: 1.2
-    iti_duration: 0.5
-    rest_duration: 12.0
+    iti_duration: 0.3
+    rest_duration: 7.0
     instruction_duration: 3.0
-    pre_block_fixation: 1.0
-    prop_neutral_mix: 0.0
+    pre_block_fixation: 0.0
     blocks:
-      - { condition: mixed, n_trials: 120, prop_congruent: 0.33, prop_incongruent: 0.33 }
+      - { condition: neutral,      n_trials: 15 }
+      - { condition: congruent,    n_trials: 15 }
+      - { condition: incongruent,  n_trials: 15 }
+      - { condition: neutral,      n_trials: 15 }
+      - { condition: congruent,    n_trials: 15 }
+      - { condition: incongruent,  n_trials: 15 }
+      - { condition: neutral,      n_trials: 15 }
+      - { condition: congruent,    n_trials: 15 }
+      - { condition: incongruent,  n_trials: 15 }

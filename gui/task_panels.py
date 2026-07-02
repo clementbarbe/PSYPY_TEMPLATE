@@ -149,6 +149,14 @@ class NBackPanel(QWidget):
 class StroopPanel(QWidget):
     TASK = 'stroop'
 
+    # Design descriptions for the GUI
+    DESIGN_INFO = {
+        1: ("Initial 15x10",   "~7min20", "15 blocs, 10 essais, rest 10s"),
+        2: ("Optimise 15x8",   "~5min50", "15 blocs,  8 essais, rest  8s"),
+        3: ("Compact 12x10",   "~5min30", "12 blocs, 10 essais, rest  8s"),
+        4: ("Final 9x15",      "~5min25", " 9 blocs, 15 essais, rest  7s"),
+    }
+
     def __init__(self, menu):
         super().__init__()
         self.menu = menu
@@ -157,14 +165,28 @@ class StroopPanel(QWidget):
         lo = QVBoxLayout(self)
         lo.setSpacing(8)
 
-        lo.addWidget(_make_design_group(self, self.TASK, self.designs,
-                                        self._run))
+        # Design buttons with name + duration
+        design_group = QGroupBox("Designs")
+        dg = QGridLayout(design_group)
+        dg.setSpacing(6)
+
+        for i, (did, _) in enumerate(sorted(self.designs.items())):
+            short, dur, desc = self.DESIGN_INFO.get(
+                did, (f"Design {did}", "?", "")
+            )
+            btn = QPushButton(f"D{did}: {short}  [{dur}]")
+            btn.setObjectName("run")
+            btn.setToolTip(desc)
+            btn.clicked.connect(lambda _, d=did: self._run(d))
+            dg.addWidget(btn, i // 2, i % 2)
+
+        lo.addWidget(design_group)
 
         info = QLabel(
-            "D1/D2 : Bloc (papier) ordre A/B contrebalance\n"
-            "D3 : Bloc court  |  D4 : Event-related\n"
-            "3 couleurs : ROUGE  ORANGE  VERT\n"
-            "Touches PC : gauche  bas  droite"
+            "3 couleurs : ROUGE  BLEU  VERT\n"
+            "Touches PC : gauche  bas  droite\n"
+            "Neutre = symboles (XXXX, %%%%, OOOO)\n"
+            "Rappel touches affiche en permanence"
         )
         info.setStyleSheet("color: #808080; font-size: 11px; padding: 4px;")
         lo.addWidget(info)
@@ -179,17 +201,17 @@ class StroopPanel(QWidget):
     def _train(self):
         n = self.sp.value()
         self.menu.run_experiment({
-            'task_name': self.TASK, 'design_id': 3,
+            'task_name': self.TASK, 'design_id': 4,
             'extra_params': {
                 'block_sequence': [
                     {'condition': 'neutral',     'n_trials': n},
-                    {'condition': 'incongruent', 'n_trials': n},
                     {'condition': 'congruent',   'n_trials': n},
+                    {'condition': 'incongruent', 'n_trials': n},
                 ],
                 'rest_duration': 5.0,
             },
         })
-
+        
 # ═════════════════════════════════════════════════════════════════════
 # Oddball Auditif
 # ═════════════════════════════════════════════════════════════════════
