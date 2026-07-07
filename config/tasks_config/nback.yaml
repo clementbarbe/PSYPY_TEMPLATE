@@ -1,7 +1,3 @@
-# ═══════════════════════════════════════════════════════════════════
-# N-Back Task — Design Configuration
-# ═══════════════════════════════════════════════════════════════════
-
 task_name: nback
 display_name: "N-Back"
 
@@ -47,89 +43,89 @@ ttl_codes:
 designs:
 
   1:
-    name: "0 vs 2-back (standard ~8min)"
-    rest_duration: 12.0
+    name: "Compact 0v2 (~6min)"
+    description: "8 blocs, 4x0-back 4x2-back, clinique/rapide"
+    rest_duration: 6.0
     stim_duration: 0.5
-    isi_duration: 2.0
+    isi_duration: 1.5
     instruction_duration: 4.0
-    pre_block_fixation: 2.0
-    target_ratio: 0.33
+    pre_block_fixation: 0.0
+    target_ratio: 0.30
     blocks:
-      - level: 0
-        n_trials: 25
-      - level: 2
-        n_trials: 25
-      - level: 2
-        n_trials: 25
-      - level: 0
-        n_trials: 25
-      - level: 2
-        n_trials: 25
-      - level: 0
-        n_trials: 25
+      - { level: 0, n_trials: 12 }
+      - { level: 2, n_trials: 12 }
+      - { level: 0, n_trials: 12 }
+      - { level: 2, n_trials: 12 }
+      - { level: 0, n_trials: 12 }
+      - { level: 2, n_trials: 12 }
+      - { level: 0, n_trials: 12 }
+      - { level: 2, n_trials: 12 }
 
   2:
-    name: "0 vs 2-back (dense)"
-    rest_duration: 10.0
+    name: "Balanced 0v2 (~7min)"
+    description: "10 blocs, 5x0-back 5x2-back, standard experimental"
+    rest_duration: 7.0
     stim_duration: 0.5
-    isi_duration: 2.0
+    isi_duration: 1.5
     instruction_duration: 4.0
-    pre_block_fixation: 2.0
-    target_ratio: 0.33
+    pre_block_fixation: 0.0
+    target_ratio: 0.30
     blocks:
-      - level: 0
-        n_trials: 20
-      - level: 2
-        n_trials: 20
-      - level: 2
-        n_trials: 20
-      - level: 0
-        n_trials: 20
-      - level: 2
-        n_trials: 20
-      - level: 0
-        n_trials: 20
+      - { level: 0, n_trials: 12 }
+      - { level: 2, n_trials: 12 }
+      - { level: 0, n_trials: 12 }
+      - { level: 2, n_trials: 12 }
+      - { level: 0, n_trials: 12 }
+      - { level: 2, n_trials: 12 }
+      - { level: 0, n_trials: 12 }
+      - { level: 2, n_trials: 12 }
+      - { level: 0, n_trials: 12 }
+      - { level: 2, n_trials: 12 }
 
   3:
-    name: "1-2-3-back (paramétrique)"
-    rest_duration: 12.0
+    name: "Power 0v2 (~8min30)"
+    description: "12 blocs, 6x0-back 6x2-back, haute puissance GLM"
+    rest_duration: 8.0
     stim_duration: 0.5
-    isi_duration: 2.0
+    isi_duration: 1.5
     instruction_duration: 4.0
-    pre_block_fixation: 2.0
-    target_ratio: 0.33
+    pre_block_fixation: 0.0
+    target_ratio: 0.30
     blocks:
-      - level: 1
-        n_trials: 25
-      - level: 2
-        n_trials: 25
-      - level: 3
-        n_trials: 25
-      - level: 2
-        n_trials: 25
-      - level: 1
-        n_trials: 25
-      - level: 3
-        n_trials: 25
+      - { level: 0, n_trials: 14 }
+      - { level: 2, n_trials: 14 }
+      - { level: 0, n_trials: 14 }
+      - { level: 2, n_trials: 14 }
+      - { level: 0, n_trials: 14 }
+      - { level: 2, n_trials: 14 }
+      - { level: 0, n_trials: 14 }
+      - { level: 2, n_trials: 14 }
+      - { level: 0, n_trials: 14 }
+      - { level: 2, n_trials: 14 }
+      - { level: 0, n_trials: 14 }
+      - { level: 2, n_trials: 14 }
 
   4:
-    name: "1-2-3-back (randomisé)"
+    name: "Research 0v2 (~10min)"
+    description: "14 blocs, 7x0-back 7x2-back, connectivite/PPI"
     rest_duration: 10.0
     stim_duration: 0.5
-    isi_duration: 2.0
+    isi_duration: 1.5
     instruction_duration: 4.0
-    pre_block_fixation: 2.0
-    target_ratio: 0.33
+    pre_block_fixation: 0.0
+    target_ratio: 0.30
     blocks:
-      - level: 2
-        n_trials: 20
-      - level: 1
-        n_trials: 20
-      - level: 3
-        n_trials: 20
-      - level: 2
-        n_trials: 20
-      - level: 3
-        n_trials: 20
-      - level: 1
-        n_trials: 20
+      - { level: 0, n_trials: 15 }
+      - { level: 2, n_trials: 15 }
+      - { level: 0, n_trials: 15 }
+      - { level: 2, n_trials: 15 }
+      - { level: 0, n_trials: 15 }
+      - { level: 2, n_trials: 15 }
+      - { level: 0, n_trials: 15 }
+      - { level: 2, n_trials: 15 }
+      - { level: 0, n_trials: 15 }
+      - { level: 2, n_trials: 15 }
+      - { level: 0, n_trials: 15 }
+      - { level: 2, n_trials: 15 }
+      - { level: 0, n_trials: 15 }
+      - { level: 2, n_trials: 15 }

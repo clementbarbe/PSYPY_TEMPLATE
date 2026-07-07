@@ -17,7 +17,6 @@ color_words:
 
 neutral_words: ["XXXX", "%%%%", "OOOO"]
 
-# Incongruent: toutes les combinaisons mot/couleur differentes
 incongruent_pairs:
   - { word: "ROUGE", ink: "bleu" }
   - { word: "ROUGE", ink: "vert" }
@@ -26,6 +25,12 @@ incongruent_pairs:
   - { word: "VERT",  ink: "rouge" }
   - { word: "VERT",  ink: "bleu" }
 
+# ── Response mode ────────────────────────────────────────────────────
+# "manual" = button press (default)
+# "vocal"  = spoken response + continuous mic recording
+response_mode: manual
+
+# ── Manual response keys ────────────────────────────────────────────
 response_keys_pc:
   rouge: "left"
   bleu:  "down"
@@ -36,10 +41,14 @@ response_keys_fmri:
   bleu:  "y"
   vert:  "g"
 
-# Rappel touches affiche en permanence en bas de l'ecran
-show_key_reminder: true
-key_reminder_height: 0.04
-key_reminder_y: -0.85
+# ── Visual indicators (circles, no text) ────────────────────────────
+indicator_radius: 0.03
+indicator_y: -0.85
+indicator_spacing: 0.25
+# Order: rouge, bleu, vert (left to right)
+
+# ── Microphone (vocal mode) ─────────────────────────────────────────
+mic_sample_rate: 44100
 
 ttl_codes:
   stim_congruent: 110
