@@ -5,4 +5,4 @@
 __pycache__/
 
 # Ignorer tout le contenu du dossier output/
-output/
+data/
