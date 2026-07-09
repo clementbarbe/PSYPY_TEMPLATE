@@ -2,8 +2,8 @@
 Stroop Color-Word Task (French) — manual & vocal versions.
 
 Manual version:
-    3 colored circles at bottom (no text) as response indicators.
     Respond with buttons: left=ROUGE, down=BLEU, right=VERT.
+    No visual indicators on screen during trials (trained beforehand).
 
 Vocal version:
     Say the ink color aloud. Continuous mic recording from trigger to end.
@@ -92,7 +92,7 @@ class StroopTask(BaseTask):
         self._response_mode = self.task_config.get('response_mode', 'manual')
         self._is_vocal = (self._response_mode == 'vocal')
 
-        # ── Manual mode setup ────────────────────────────────────────
+        # ── Manual mode: keys only, NO visual indicators ─────────────
         if not self._is_vocal:
             mode = self.settings.mode
             if mode == 'fmri':
@@ -107,31 +107,10 @@ class StroopTask(BaseTask):
             }
             self._key_to_color = {v: k for k, v in self._color_to_key.items()}
             self._valid_keys = list(self._color_to_key.values())
-
-            # Colored circles as indicators (no text)
-            radius = self.task_config.get('indicator_radius', 0.03)
-            ind_y = self.task_config.get('indicator_y', -0.85)
-            spacing = self.task_config.get('indicator_spacing', 0.25)
-
-            self._indicators = []
-            color_order = ['rouge', 'bleu', 'vert']
-            for i, c in enumerate(color_order):
-                x = -spacing + i * spacing
-                circle = visual.Circle(
-                    self.win,
-                    radius=radius,
-                    fillColor=self._color_rgb[c],
-                    lineColor=self._color_rgb[c],
-                    pos=(x, ind_y),
-                    edges=64,
-                )
-                self._indicators.append(circle)
         else:
-            # Vocal: no response keys, no indicators
             self._color_to_key = {}
             self._key_to_color = {}
             self._valid_keys = []
-            self._indicators = []
 
         # ── Microphone (vocal mode) ──────────────────────────────────
         self._mic = None
@@ -143,11 +122,6 @@ class StroopTask(BaseTask):
             )
 
         self._ttl = self.task_config.get('ttl_codes', {})
-
-    def _draw_indicators(self):
-        """Draw colored circles at bottom."""
-        for c in self._indicators:
-            c.draw()
 
     # ═════════════════════════════════════════════════════════════════
     # INSTRUCTIONS
@@ -183,8 +157,6 @@ class StroopTask(BaseTask):
                 f"  ROUGE  ->  [{k_r}]  (index)\n"
                 f"  BLEU   ->  [{k_b}]  (majeur)\n"
                 f"  VERT   ->  [{k_v}]  (annulaire)\n\n"
-                f"Les cercles colores en bas de l'ecran\n"
-                f"rappellent l'ordre des reponses.\n\n"
                 f"Repondez le plus VITE et PRECISEMENT possible.\n\n"
                 f"Appuyez sur une touche pour continuer..."
             )
@@ -317,12 +289,10 @@ class StroopTask(BaseTask):
 
         # ── Fixation 500ms ───────────────────────────────────────────
         self._fixation.draw()
-        self._draw_indicators()
         self.win.flip()
         deadline = self.clock.time + fix_dur
         while self.clock.time < deadline:
             self._fixation.draw()
-            self._draw_indicators()
             self.win.flip()
             self.get_keys(key_list=[])
 
@@ -330,7 +300,6 @@ class StroopTask(BaseTask):
         self._word_stim.text = word
         self._word_stim.color = self._color_rgb[ink_color]
         self._word_stim.draw()
-        self._draw_indicators()
         self.win.flip()
         stim_onset = self.clock.time
 
@@ -358,14 +327,12 @@ class StroopTask(BaseTask):
                     if ttl_r:
                         self.hardware.send_trigger(ttl_r)
             else:
-                self.get_keys(key_list=[])  # escape check
+                self.get_keys(key_list=[])
             self._word_stim.draw()
-            self._draw_indicators()
             self.win.flip()
 
         # ── ITI 300ms ────────────────────────────────────────────────
         self._fixation.draw()
-        self._draw_indicators()
         self.win.flip()
         deadline = self.clock.time + iti_dur
         while self.clock.time < deadline:
@@ -385,7 +352,6 @@ class StroopTask(BaseTask):
             else:
                 self.get_keys(key_list=[])
             self._fixation.draw()
-            self._draw_indicators()
             self.win.flip()
 
         is_correct = (response_color == ink_color) if responded else False
@@ -424,7 +390,6 @@ class StroopTask(BaseTask):
     # ═════════════════════════════════════════════════════════════════
 
     def _finish(self) -> 'Path | None':
-        # Stop microphone before parent cleanup
         if self._mic is not None and self._mic.is_recording:
             wav_path = self._mic.stop(self.clock)
             sync = self._mic.get_sync_info()
@@ -433,7 +398,6 @@ class StroopTask(BaseTask):
                 f"stop={sync['mic_stop_time']:.3f}s "
                 f"dur={sync['mic_duration']:.1f}s"
             )
-            # Write sync info to a sidecar file
             try:
                 import json
                 sync_path = (
