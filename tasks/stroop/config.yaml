@@ -1,0 +1,138 @@
+name: "Stroop"
+description: "Dénomination de la couleur de l'encre."
+
+colors:
+  rouge: [1.0, -1.0, -1.0]
+  bleu: [-1.0, -1.0, 1.0]
+  vert: [-1.0, 0.8, -1.0]
+
+color_words:
+  rouge: "ROUGE"
+  bleu: "BLEU"
+  vert: "VERT"
+
+neutral_words:
+  - IDEE
+  - ACTE
+  - FAIT
+  - AVIS
+  - SENS
+  - ETAT
+  - CAUSE
+  - ORDRE
+  - THEME
+  - DEBUT
+  - TERME
+  - DROIT
+
+markers:
+  congruent: 110
+  incongruent: 111
+  neutral: 112
+  correct: 160
+  incorrect: 161
+
+display:
+  word_height: 0.15
+  indicator_radius: 0.028
+  indicator_y: -0.82
+  indicator_spacing: 0.22
+  indicator_hide_lead: 2.0
+
+designs:
+  1:
+    name: "Mini-blocs 24x4"
+    paradigm: block
+    fixation_duration: 0.5
+    stim_duration: 1.2
+    iti_duration: 0.3
+    rest_duration: 7.0
+    instruction_duration: 0.0
+    pre_block_fixation: 0.0
+    blocks:
+      - {condition: neutral, n_trials: 4}
+      - {condition: congruent, n_trials: 4}
+      - {condition: incongruent, n_trials: 4}
+      - {condition: incongruent, n_trials: 4}
+      - {condition: neutral, n_trials: 4}
+      - {condition: congruent, n_trials: 4}
+      - {condition: congruent, n_trials: 4}
+      - {condition: incongruent, n_trials: 4}
+      - {condition: neutral, n_trials: 4}
+      - {condition: neutral, n_trials: 4}
+      - {condition: congruent, n_trials: 4}
+      - {condition: incongruent, n_trials: 4}
+      - {condition: incongruent, n_trials: 4}
+      - {condition: neutral, n_trials: 4}
+      - {condition: congruent, n_trials: 4}
+      - {condition: congruent, n_trials: 4}
+      - {condition: incongruent, n_trials: 4}
+      - {condition: neutral, n_trials: 4}
+      - {condition: neutral, n_trials: 4}
+      - {condition: incongruent, n_trials: 4}
+      - {condition: congruent, n_trials: 4}
+      - {condition: congruent, n_trials: 4}
+      - {condition: neutral, n_trials: 4}
+      - {condition: incongruent, n_trials: 4}
+
+  2:
+    name: "Mini-blocs 18x7"
+    paradigm: block
+    fixation_duration: 0.5
+    stim_duration: 1.2
+    iti_duration: 0.3
+    rest_duration: 7.0
+    instruction_duration: 0.0
+    pre_block_fixation: 0.0
+    blocks:
+      - {condition: neutral, n_trials: 7}
+      - {condition: congruent, n_trials: 7}
+      - {condition: incongruent, n_trials: 7}
+      - {condition: incongruent, n_trials: 7}
+      - {condition: neutral, n_trials: 7}
+      - {condition: congruent, n_trials: 7}
+      - {condition: congruent, n_trials: 7}
+      - {condition: incongruent, n_trials: 7}
+      - {condition: neutral, n_trials: 7}
+      - {condition: neutral, n_trials: 7}
+      - {condition: congruent, n_trials: 7}
+      - {condition: incongruent, n_trials: 7}
+      - {condition: incongruent, n_trials: 7}
+      - {condition: neutral, n_trials: 7}
+      - {condition: congruent, n_trials: 7}
+      - {condition: congruent, n_trials: 7}
+      - {condition: incongruent, n_trials: 7}
+      - {condition: neutral, n_trials: 7}
+
+  3:
+    name: "Blocs longs 9x15"
+    paradigm: block
+    fixation_duration: 0.5
+    stim_duration: 1.2
+    iti_duration: 0.3
+    rest_duration: 7.0
+    instruction_duration: 0.0
+    pre_block_fixation: 0.0
+    blocks:
+      - {condition: neutral, n_trials: 15}
+      - {condition: congruent, n_trials: 15}
+      - {condition: incongruent, n_trials: 15}
+      - {condition: incongruent, n_trials: 15}
+      - {condition: neutral, n_trials: 15}
+      - {condition: congruent, n_trials: 15}
+      - {condition: congruent, n_trials: 15}
+      - {condition: incongruent, n_trials: 15}
+      - {condition: neutral, n_trials: 15}
+
+  4:
+    name: "Event-related 75"
+    paradigm: event
+    fixation_duration: 0.5
+    stim_duration: 1.2
+    iti_min: 1.5
+    iti_max: 4.5
+    rest_duration: 10.0
+    instruction_duration: 0.0
+    pre_block_fixation: 0.0
+    blocks:
+      - {condition: mixed, n_trials: 75}

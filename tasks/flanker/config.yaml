@@ -1,0 +1,93 @@
+name: "Eriksen Flanker"
+description: "Répondre à la direction de la flèche centrale."
+
+markers:
+  congruent: 100
+  incongruent: 101
+  neutral: 102
+  correct: 150
+  incorrect: 151
+
+designs:
+  1:
+    name: "Blocs congruent vs incongruent"
+    rest_duration: 12.0
+    stim_duration: 1.5
+    isi_min: 1.0
+    isi_max: 1.0
+    instruction_duration: 3.0
+    pre_block_fixation: 1.0
+    blocks:
+      - {condition: congruent, n_trials: 20}
+      - {condition: incongruent, n_trials: 20}
+      - {condition: incongruent, n_trials: 20}
+      - {condition: congruent, n_trials: 20}
+      - {condition: incongruent, n_trials: 20}
+      - {condition: congruent, n_trials: 20}
+
+  2:
+    name: "Event-related jittered"
+    rest_duration: 15.0
+    stim_duration: 1.5
+    isi_min: 2.0
+    isi_max: 6.0
+    instruction_duration: 0.0
+    pre_block_fixation: 1.0
+    blocks:
+      - {condition: mixed, n_trials: 96, prop_incongruent: 0.5}
+
+  3:
+    name: "Mini-blocs hybrides"
+    rest_duration: 12.0
+    stim_duration: 1.5
+    isi_min: 1.0
+    isi_max: 2.0
+    instruction_duration: 0.0
+    pre_block_fixation: 0.0
+    blocks:
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 8, prop_incongruent: 0.5}
+
+  4:
+    name: "Mini-blocs courts"
+    rest_duration: 10.0
+    stim_duration: 1.5
+    isi_min: 1.0
+    isi_max: 1.5
+    instruction_duration: 0.0
+    pre_block_fixation: 0.0
+    blocks:
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}
+      - {condition: mixed, n_trials: 4, prop_incongruent: 0.5}

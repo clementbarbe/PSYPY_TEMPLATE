@@ -1,0 +1,70 @@
+# ============================================================================
+# Configuration globale du template expérimental.
+#
+# Ce fichier contient UNIQUEMENT les paramètres de session/matériel généraux.
+# Les paramètres d'une tâche sont dans tasks/<nom_tache>/config.yaml.
+# ============================================================================
+
+project:
+  data_dir: data
+  fullscreen: true
+  default_screen: 0
+  quit_key: escape
+  end_screen_seconds: 3.0
+
+display:
+  resolution: [1920, 1080]
+  width_cm: 53.0
+  viewing_distance_cm: 60.0
+  refresh_rate: 60.0
+  background_color: [-1, -1, -1]
+  flip_horizontal: false
+  flip_vertical: false
+
+input:
+  trigger:
+    # false : une touche démarre directement l'expérience.
+    # true  : attente de la touche ou du byte de trigger configuré.
+    enabled: false
+    source: keyboard       # keyboard | serial
+    key: t
+    serial_port: ""
+    baudrate: 115200
+    timeout_seconds: 300.0
+
+  # Touches génériques disponibles pour toutes les tâches.
+  responses:
+    left: left
+    right: right
+    down: down
+    go: space
+
+output:
+  markers:
+    # Envoi de TTL/marqueurs d'événements.
+    enabled: false
+    transport: none        # none | parallel | serial
+
+    # Utilisé si transport: parallel
+    parallel_address: null
+
+    # Utilisé si transport: serial
+    serial_port: ""
+    baudrate: 115200
+
+    pulse_seconds: 0.005
+
+audio:
+  backend: ptb
+  sample_rate: 48000
+  schedule_lead_seconds: 0.100
+  minimum_schedule_lead_seconds: 0.030
+
+eyetracker:
+  enabled: false
+  host: "100.1.1.1"
+
+microphone:
+  enabled: false
+  sample_rate: 44100
+  channels: 1

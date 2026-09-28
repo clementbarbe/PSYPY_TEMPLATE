@@ -1,8 +1,15 @@
-# Ignorer tous les dossiers commençant par un point
-.*/
-
-# Ignorer les dossiers __pycache__ (Python)
 __pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+.idea/
+.vscode/
 
-# Ignorer tout le contenu du dossier output/
 data/
+*.edf
+*.wav
+
+.DS_Store
+Thumbs.db

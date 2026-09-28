@@ -1,0 +1,115 @@
+name: "N-Back"
+description: "Go/No-Go mémoire de travail 0-back et 2-back."
+
+consonants:
+  - B
+  - C
+  - D
+  - F
+  - G
+  - H
+  - J
+  - K
+  - L
+  - M
+  - N
+  - P
+  - R
+  - S
+  - T
+  - V
+  - W
+  - Z
+
+zero_back_targets: [B, D, K, M, R, T]
+
+markers:
+  target: 100
+  nontarget: 101
+  hit: 150
+  false_alarm: 151
+
+designs:
+  1:
+    name: "Compact 0-back vs 2-back"
+    rest_duration: 6.0
+    stim_duration: 0.5
+    isi_duration: 1.5
+    instruction_duration: 4.0
+    pre_block_fixation: 0.0
+    target_ratio: 0.30
+    blocks:
+      - {level: 0, n_trials: 12}
+      - {level: 2, n_trials: 12}
+      - {level: 0, n_trials: 12}
+      - {level: 2, n_trials: 12}
+      - {level: 0, n_trials: 12}
+      - {level: 2, n_trials: 12}
+      - {level: 0, n_trials: 12}
+      - {level: 2, n_trials: 12}
+
+  2:
+    name: "Balanced 0-back vs 2-back"
+    rest_duration: 7.0
+    stim_duration: 0.5
+    isi_duration: 1.5
+    instruction_duration: 4.0
+    pre_block_fixation: 0.0
+    target_ratio: 0.30
+    blocks:
+      - {level: 0, n_trials: 12}
+      - {level: 2, n_trials: 12}
+      - {level: 0, n_trials: 12}
+      - {level: 2, n_trials: 12}
+      - {level: 0, n_trials: 12}
+      - {level: 2, n_trials: 12}
+      - {level: 0, n_trials: 12}
+      - {level: 2, n_trials: 12}
+      - {level: 0, n_trials: 12}
+      - {level: 2, n_trials: 12}
+
+  3:
+    name: "Power 0-back vs 2-back"
+    rest_duration: 8.0
+    stim_duration: 0.5
+    isi_duration: 1.5
+    instruction_duration: 4.0
+    pre_block_fixation: 0.0
+    target_ratio: 0.30
+    blocks:
+      - {level: 0, n_trials: 14}
+      - {level: 2, n_trials: 14}
+      - {level: 0, n_trials: 14}
+      - {level: 2, n_trials: 14}
+      - {level: 0, n_trials: 14}
+      - {level: 2, n_trials: 14}
+      - {level: 0, n_trials: 14}
+      - {level: 2, n_trials: 14}
+      - {level: 0, n_trials: 14}
+      - {level: 2, n_trials: 14}
+      - {level: 0, n_trials: 14}
+      - {level: 2, n_trials: 14}
+
+  4:
+    name: "Research 0-back vs 2-back"
+    rest_duration: 10.0
+    stim_duration: 0.5
+    isi_duration: 1.5
+    instruction_duration: 4.0
+    pre_block_fixation: 0.0
+    target_ratio: 0.30
+    blocks:
+      - {level: 0, n_trials: 15}
+      - {level: 2, n_trials: 15}
+      - {level: 0, n_trials: 15}
+      - {level: 2, n_trials: 15}
+      - {level: 0, n_trials: 15}
+      - {level: 2, n_trials: 15}
+      - {level: 0, n_trials: 15}
+      - {level: 2, n_trials: 15}
+      - {level: 0, n_trials: 15}
+      - {level: 2, n_trials: 15}
+      - {level: 0, n_trials: 15}
+      - {level: 2, n_trials: 15}
+      - {level: 0, n_trials: 15}
+      - {level: 2, n_trials: 15}

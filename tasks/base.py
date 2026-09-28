@@ -1,15 +1,19 @@
 """
-BaseTask — abstract base class with escape handling and audio support.
+BaseTask : logique commune à toutes les tâches.
 
-Template Method: setup -> instructions -> trigger -> [blocks] -> cleanup
+Les tâches doivent définir au minimum :
 
-ESCAPE: raises AbortExperiment at any point, triggers full cleanup.
-AUDIO: self.audio provides lazy AudioManager access.
+    class Task(BaseTask):
+        def setup(self): ...
+        def instructions(self): ...
+        def build_trials(self, block): ...
+        def run_trial(self, trial, block_index, trial_index, block): ...
 """
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+import json
+import random
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
@@ -17,396 +21,444 @@ from pathlib import Path
 from psychopy import visual
 from psychopy.hardware import keyboard
 
-from config.constants import (
-    FIXATION_COLOR, INSTRUCTION_COLOR,
-    DEFAULT_FONT, FIXATION_HEIGHT, INSTRUCTION_HEIGHT,
-    TTL_START_EXP, TTL_END_EXP, TTL_REST_START, TTL_REST_END,
-    TTL_INSTRUCTION, END_SCREEN_DURATION, TRIGGER_TIMEOUT,
-    QUIT_KEY,
-)
-from config.settings import ExperimentSettings
-from config.scanners.base import ScannerConfig
-from core.clock import ExperimentClock
-from core.events import EventBus
-from core.exceptions import AbortExperiment
-from hardware.manager import HardwareManager
-from dataio.logger import ExperimentLogger
-from dataio.data_writer import DataWriter
-from utils.console import SYM_PAUSE
+from experiment import AbortExperiment, TaskConfigurationError
 
 
-class BaseTask(ABC):
-    """Abstract base for all experimental tasks."""
+MARKER_START = 255
+MARKER_END = 254
+MARKER_REST_START = 200
+MARKER_REST_END = 201
+MARKER_INSTRUCTION = 210
 
-    TASK_NAME: str = 'base'
+
+class BaseTask:
+    """Base simple et réutilisable pour les tâches PsychoPy."""
+
+    NAME = "base"
+    PREGENERATE = False
 
     def __init__(
         self,
-        win: visual.Window,
-        clock: ExperimentClock,
-        hardware: HardwareManager,
-        data_writer: DataWriter,
-        logger: ExperimentLogger,
-        event_bus: EventBus,
-        settings: ExperimentSettings,
-        scanner: ScannerConfig,
+        win,
+        clock,
+        settings,
+        hardware,
+        writer,
+        logger,
+        task_name: str,
         task_config: dict,
-        design_id: int = 1,
-        **kwargs,
+        design_id: int,
+        run: str,
+        seed: int | None = None,
     ):
         self.win = win
         self.clock = clock
-        self.hardware = hardware
-        self.data_writer = data_writer
-        self.logger = logger
-        self.event_bus = event_bus
         self.settings = settings
-        self.scanner = scanner
-        self.task_config = task_config
+        self.hardware = hardware
+        self.writer = writer
+        self.logger = logger
 
+        self.task_name = task_name
+        self.config = task_config
         self.design_id = design_id
-        self.design = self._resolve_design(design_id, kwargs)
-        self.block_sequence = deepcopy(self.design.get('blocks', []))
+        self.run_id = run
 
-        self._quit_key = QUIT_KEY
-        self._audio = None  # lazy init
+        self.design = self._resolve_design(design_id)
+        self.blocks = deepcopy(self.design.get("blocks", []))
 
-        self._fixation = visual.TextStim(
-            win, text='+', color=FIXATION_COLOR,
-            height=FIXATION_HEIGHT, pos=(0, 0),
-        )
-        self._instruction_stim = visual.TextStim(
-            win, text='', color=INSTRUCTION_COLOR,
-            height=INSTRUCTION_HEIGHT, pos=(0, 0),
-            wrapWidth=1.5, font=DEFAULT_FONT,
-        )
-
-        self._keyboard = keyboard.Keyboard(clock=clock.psychopy_clock)
-        self._response_keys = dict(scanner.response_keys)
-        self._global_trial_idx = 0
-
-        self._setup_stimuli()
-        self._log_design_summary()
-
-    # ═════════════════════════════════════════════════════════════════
-    # AUDIO — lazy init
-    # ═════════════════════════════════════════════════════════════════
-
-    @property
-    def audio(self):
-        """
-        Lazy AudioManager access.
-
-        Only created on first use — tasks that don't need audio
-        pay no cost. Usage in subclass::
-
-            def _setup_stimuli(self):
-                self.audio.preload('beep', 'stimuli/sounds/beep.wav')
-
-            def run_trial(self, ...):
-                self.audio.play_scheduled('beep', target_t, self.clock)
-        """
-        if self._audio is None:
-            from hardware.audio import AudioManager
-            self._audio = AudioManager()
-            self.logger.log("AudioManager initialised (lazy).")
-        return self._audio
-
-    # ═════════════════════════════════════════════════════════════════
-    # ABSTRACT
-    # ═════════════════════════════════════════════════════════════════
-
-    @abstractmethod
-    def _setup_stimuli(self) -> None:
-        """Create task-specific visual stimuli."""
-
-    @abstractmethod
-    def _get_instruction_text(self) -> str:
-        """Return instruction string."""
-
-    @abstractmethod
-    def _get_block_instruction(self, block_idx: int,
-                               block_def: dict) -> str | None:
-        """Return block instruction, or None to skip."""
-
-    @abstractmethod
-    def generate_trials(self, block_def: dict) -> list:
-        """Generate trial list for one block."""
-
-    @abstractmethod
-    def run_trial(self, trial_data, block_idx: int, trial_idx: int,
-                  block_def: dict, **kwargs) -> dict:
-        """Execute one trial. Return record dict."""
-
-    def _print_task_stats(self) -> None:
-        """Optional end stats."""
-
-    # ═════════════════════════════════════════════════════════════════
-    # DESIGN
-    # ═════════════════════════════════════════════════════════════════
-
-    def _resolve_design(self, design_id: int, overrides: dict) -> dict:
-        designs = self.task_config.get('designs', {})
-        if design_id not in designs:
-            raise ValueError(
-                f"Design {design_id} not found. Available: {list(designs.keys())}"
+        if not self.blocks:
+            raise TaskConfigurationError(
+                f"{task_name}, design {design_id}: aucun bloc défini."
             )
-        design = deepcopy(designs[design_id])
-        if 'n_miniblocks' in design and 'miniblock_template' in design:
-            template = design.pop('miniblock_template')
-            n = design.pop('n_miniblocks')
-            design['blocks'] = [deepcopy(template) for _ in range(n)]
-        for key, value in overrides.items():
-            if value is not None and key in design:
-                design[key] = value
-        return design
 
-    def _log_design_summary(self) -> None:
-        name = self.design.get('name', 'Unknown')
-        n = len(self.block_sequence)
-        t = sum(b.get('n_trials', 0) for b in self.block_sequence)
-        self.logger.ok(f"TASK: {self.TASK_NAME} | DESIGN: {name} | {n} blocks | {t} trials")
+        self.seed = seed if seed is not None else random.randrange(2**31)
+        self.rng = random.Random(self.seed)
 
-    # ═════════════════════════════════════════════════════════════════
-    # KEYBOARD — escape-aware
-    # ═════════════════════════════════════════════════════════════════
+        self.global_trial_index = 0
+        self.prepared_blocks: list[list] | None = None
 
-    def get_keys(self, key_list: list[str] | None = None):
-        """Get keys, checking escape. Raises AbortExperiment on escape."""
-        if key_list is not None:
-            check = list(key_list)
-            if self._quit_key not in check:
-                check.append(self._quit_key)
-        else:
-            check = None
+        self.keyboard = keyboard.Keyboard(clock=self.clock.psychopy_clock)
 
-        keys = self._keyboard.getKeys(keyList=check, waitRelease=False)
-        if not keys:
-            return []
+        self.fixation = visual.TextStim(
+            self.win,
+            text="+",
+            color="white",
+            height=0.10,
+            pos=(0, 0),
+        )
 
-        for k in keys:
-            if k.name == self._quit_key:
-                raise AbortExperiment(f"Escape pressed at t={self.clock.time:.3f}s")
+        self.text = visual.TextStim(
+            self.win,
+            text="",
+            color=(1, 1, 0),
+            height=0.055,
+            pos=(0, 0),
+            wrapWidth=1.55,
+            font="Arial",
+        )
 
-        if key_list is not None:
-            keys = [k for k in keys if k.name in key_list]
-        return keys
+        self.setup()
 
-    def flush_keyboard(self) -> None:
-        self._keyboard.clearEvents()
+    # ------------------------------------------------------------------
+    # Méthodes à définir par les tâches
+    # ------------------------------------------------------------------
 
-    # ═════════════════════════════════════════════════════════════════
-    # DISPLAY
-    # ═════════════════════════════════════════════════════════════════
+    def setup(self) -> None:
+        """Crée les stimuli spécifiques de la tâche."""
 
-    def show_fixation(self, duration: float) -> None:
-        self._fixation.draw()
-        self.win.flip()
-        deadline = self.clock.time + duration
-        while self.clock.time < deadline:
-            self._fixation.draw()
-            self.win.flip()
-            self.get_keys(key_list=[])
+    def instructions(self) -> str:
+        """Texte affiché avant le trigger."""
+        return "Instructions non définies."
 
-    def show_text_and_wait(self, text: str) -> None:
-        self._instruction_stim.text = text
-        self._instruction_stim.draw()
-        self.win.flip()
-        while True:
-            self._instruction_stim.draw()
-            self.win.flip()
-            keys = self._keyboard.getKeys(waitRelease=False)
-            if keys:
-                for k in keys:
-                    if k.name == self._quit_key:
-                        raise AbortExperiment("Escape during instructions")
-                break
-        self.flush_keyboard()
+    def block_instruction(self, block_index: int, block: dict) -> str | None:
+        """Instruction courte avant un bloc, ou None."""
+        return None
 
-    def show_timed_text(self, text: str, duration: float,
-                        stim=None) -> None:
-        target = stim or self._instruction_stim
-        target.text = text
-        target.draw()
-        self.win.flip()
-        deadline = self.clock.time + duration
-        while self.clock.time < deadline:
-            target.draw()
-            self.win.flip()
-            self.get_keys(key_list=[])
+    def build_trials(self, block: dict) -> list:
+        """Génère les essais d'un bloc."""
+        raise NotImplementedError
 
-    # ═════════════════════════════════════════════════════════════════
-    # TRIGGER
-    # ═════════════════════════════════════════════════════════════════
+    def build_all_trials(self) -> list[list]:
+        """Optionnel : génération complète avant t=0."""
+        return [self.build_trials(block) for block in self.blocks]
 
-    def wait_for_trigger(self) -> None:
-        trigger_key = self.scanner.trigger_key
-        self._instruction_stim.text = f"Attente trigger [{trigger_key}]..."
-        self._instruction_stim.draw()
-        self.win.flip()
+    def validate_trials(self, blocks: list[list]) -> None:
+        """Optionnel : lève une erreur si la séquence est invalide."""
 
-        while True:
-            self._instruction_stim.draw()
-            self.win.flip()
-            keys = self._keyboard.getKeys(
-                keyList=[trigger_key, self._quit_key], waitRelease=False,
-            )
-            for k in (keys or []):
-                if k.name == self._quit_key:
-                    raise AbortExperiment("Escape during trigger wait")
-                if k.name == trigger_key:
-                    self.clock.reset()
-                    self.flush_keyboard()
-                    self.logger.ok(f"TRIGGER t=0 | {self.clock.trigger_wall_time}")
-                    self.hardware.send_trigger(TTL_START_EXP)
-                    self.hardware.send_eyetracker_message("START_EXP_t0.000")
-                    self.event_bus.publish('trigger_received')
-                    return
+    def run_trial(
+        self,
+        trial,
+        block_index: int,
+        trial_index: int,
+        block: dict,
+    ) -> dict:
+        """Exécute un essai et retourne son dictionnaire de données."""
+        raise NotImplementedError
 
-    # ═════════════════════════════════════════════════════════════════
-    # REST / BLOCK
-    # ═════════════════════════════════════════════════════════════════
+    def print_summary(self) -> None:
+        """Optionnel : résumé terminal à la fin."""
 
-    def run_rest(self, label='', duration=None):
-        dur = duration if duration is not None else self.design.get('rest_duration', 10.0)
-        t = self.clock.time
-        print(f"  {SYM_PAUSE} Rest {dur:.1f}s | t={t:.1f}s | {label}")
-        self.hardware.send_trigger(TTL_REST_START)
-        self.show_fixation(dur)
-        self.hardware.send_trigger(TTL_REST_END)
+    # ------------------------------------------------------------------
+    # Validation hors PsychoPy
+    # ------------------------------------------------------------------
 
-    def run_block(self, block_idx: int, block_def: dict) -> None:
-        self.logger.log(f"Block {block_idx} | START")
-        self.event_bus.publish('block_start', block_idx=block_idx, block_def=block_def)
+    @classmethod
+    def dry_run(
+        cls,
+        task_config: dict,
+        design_id: int,
+        seed: int | None = None,
+    ) -> None:
+        """
+        Validation de la configuration sans créer de fenêtre PsychoPy.
 
-        instr = self._get_block_instruction(block_idx, block_def)
-        instr_dur = self.design.get('instruction_duration', 3.0)
-        if instr and instr_dur > 0:
-            self.hardware.send_trigger(TTL_INSTRUCTION)
-            self.show_timed_text(instr, instr_dur)
+        Les tâches complexes peuvent surcharger cette méthode.
+        """
+        if design_id not in task_config["designs"]:
+            raise ValueError(f"Design {design_id} absent.")
 
-        pre_fix = self.design.get('pre_block_fixation', 1.0)
-        if pre_fix > 0:
-            self.show_fixation(pre_fix)
+        design = task_config["designs"][design_id]
 
-        trials = self.generate_trials(block_def)
-        for trial_idx, trial_data in enumerate(trials):
-            record = self.run_trial(trial_data, block_idx=block_idx,
-                                    trial_idx=trial_idx, block_def=block_def)
-            record['trial_idx_global'] = self._global_trial_idx
-            self._global_trial_idx += 1
-            self.data_writer.write_trial(record)
-            self.event_bus.publish('trial_end', record=record)
+        if not design.get("blocks"):
+            raise ValueError("Le design ne définit aucun bloc.")
 
-        self.event_bus.publish('block_end', block_idx=block_idx, block_def=block_def)
-        self.logger.log(f"Block {block_idx} | END")
-
-    # ═════════════════════════════════════════════════════════════════
-    # RUN
-    # ═════════════════════════════════════════════════════════════════
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
 
     def run(self) -> Path | None:
-        saved_path = None
-        try:
-            self.show_text_and_wait(self._get_instruction_text())
-            self.wait_for_trigger()
-            self.run_rest(label='initial')
-
-            n = len(self.block_sequence)
-            for i, bdef in enumerate(self.block_sequence):
-                self.run_block(i, bdef)
-                if i < n - 1:
-                    self._run_inter_block(i)
-
-            self.run_rest(label='final')
-            self.logger.ok(f"Task {self.TASK_NAME} completed.")
-
-        except AbortExperiment as e:
-            self.logger.warn(f"ABORT: {e}")
-        except (KeyboardInterrupt, SystemExit):
-            self.logger.warn("Interrupted.")
-        except Exception as e:
-            self.logger.err(f"CRITICAL: {e}")
-            import traceback
-            traceback.print_exc()
-        finally:
-            saved_path = self._finish()
-        return saved_path
-
-    def _run_inter_block(self, block_idx):
-        import random
-        paradigm = self.design.get('paradigm', 'block')
-        ib_min = self.design.get('inter_block_min', 0.0)
-        ib_max = self.design.get('inter_block_max', 0.0)
-        if paradigm == 'hybrid' and ib_max > 0:
-            self.run_rest(label=f'jitter_{block_idx}',
-                          duration=random.uniform(ib_min, ib_max))
-        else:
-            self.run_rest(label=f'after_block_{block_idx}')
-
-    def _finish(self) -> Path | None:
-        t = self.clock.time
-        self.logger.log(f"Session end | t={t:.1f}s ({t/60:.1f} min)")
-
-        try: self.hardware.send_trigger(TTL_END_EXP)
-        except Exception: pass
-
-        try: self.hardware.send_eyetracker_message(f"END_EXP_t{t:.3f}")
-        except Exception: pass
-
-        try:
-            if self.hardware.has_eyetracker:
-                self.hardware.stop_eyetracker()
-                if self.hardware._eyetracker is not None:
-                    self.hardware._eyetracker.transfer_data(
-                        str(self.settings.task_dir(self.TASK_NAME))
-                    )
-        except Exception as e:
-            self.logger.warn(f"ET cleanup: {e}")
-
-        # Audio cleanup
-        if self._audio is not None:
-            try:
-                self._audio.close()
-            except Exception:
-                pass
-
         saved = None
-        if self.settings.save_data:
-            try: saved = self.data_writer.save_final()
-            except Exception as e: self.logger.err(f"Save failed: {e}")
-
-        try: self.data_writer.close()
-        except Exception: pass
 
         try:
-            if self.data_writer.records:
-                self._print_task_stats()
-        except Exception: pass
+            self.prepare()
+            self.show_text_wait(self.instructions())
+            self.wait_for_start()
 
-        try:
-            if self.win and not getattr(self.win, '_closed', False):
-                self._instruction_stim.text = "Fin de la session.\nMerci."
-                self._instruction_stim.draw()
-                self.win.flip()
-                self.clock.wait(END_SCREEN_DURATION)
-        except Exception: pass
+            self.hardware.marker(MARKER_START)
+            self.hardware.eyetracker_message("START_EXPERIMENT")
 
-        self.event_bus.publish('task_end', saved_path=saved)
+            self.run_rest("initial")
+
+            for block_index, block in enumerate(self.blocks):
+                self.run_block(block_index, block)
+
+                if block_index < len(self.blocks) - 1:
+                    self.run_rest(f"after_block_{block_index + 1}")
+
+            self.run_rest("final")
+            self.logger.ok("Tâche terminée normalement.")
+
+        except AbortExperiment as exc:
+            self.logger.warning(f"Tâche interrompue : {exc}")
+
+        except KeyboardInterrupt:
+            self.logger.warning("Tâche interrompue par l'utilisateur.")
+
+        except Exception as exc:
+            import traceback
+
+            self.logger.error(f"Erreur critique : {exc}")
+            traceback.print_exc()
+
+        finally:
+            saved = self.finish()
+
         return saved
 
-    def _base_record(self, block_idx, trial_idx, block_def):
-        return {
-            'participant': self.settings.participant_id,
-            'session': self.settings.session,
-            'run': self.settings.run,
-            'scanner': self.scanner.name,
-            'mode': self.settings.mode,
-            'design_id': self.design_id,
-            'design_name': self.design.get('name', ''),
-            'trigger_time': self.clock.trigger_wall_time or '',
-            'block_idx': block_idx,
-            'trial_idx': trial_idx,
-            'task_time': round(self.clock.time, 4),
-            'wall_timestamp': datetime.now().strftime('%H:%M:%S.%f'),
+    def prepare(self) -> None:
+        if not self.PREGENERATE:
+            return
+
+        self.logger.info(f"Génération de séquence, seed={self.seed}")
+
+        self.prepared_blocks = self.build_all_trials()
+        self.validate_trials(self.prepared_blocks)
+
+        expected = sum(block.get("n_trials", 0) for block in self.blocks)
+        produced = sum(len(block) for block in self.prepared_blocks)
+
+        if produced != expected:
+            raise TaskConfigurationError(
+                f"Séquence invalide : {produced} essais générés, "
+                f"{expected} attendus."
+            )
+
+        self.write_design_sidecar()
+
+    def wait_for_start(self) -> None:
+        if not self.settings.trigger_enabled:
+            self.clock.reset()
+            self.flush_keyboard()
+            return
+
+        self.text.text = (
+            f"Attente du trigger [{self.settings.trigger_key}]\n\n"
+            f"Escape pour annuler"
+        )
+
+        self.text.draw()
+        self.win.flip()
+
+        received = self.hardware.wait_for_trigger(
+            keyboard=self.keyboard,
+            quit_key=self.settings.quit_key,
+        )
+
+        if not received:
+            raise AbortExperiment("Timeout trigger")
+
+        self.clock.reset()
+        self.flush_keyboard()
+
+        self.logger.ok(f"Trigger reçu : t=0 ({self.clock.trigger_wall_time})")
+
+    def run_block(self, block_index: int, block: dict) -> None:
+        instruction = self.block_instruction(block_index, block)
+        instruction_duration = float(self.design.get("instruction_duration", 0))
+
+        if instruction and instruction_duration > 0:
+            self.hardware.marker(MARKER_INSTRUCTION)
+            self.show_text_timed(instruction, instruction_duration)
+
+        pre_fixation = float(self.design.get("pre_block_fixation", 0))
+
+        if pre_fixation > 0:
+            self.show_fixation(pre_fixation)
+
+        if self.prepared_blocks is not None:
+            trials = self.prepared_blocks[block_index]
+        else:
+            trials = self.build_trials(block)
+
+        for trial_index, trial in enumerate(trials):
+            record = self.run_trial(
+                trial=trial,
+                block_index=block_index,
+                trial_index=trial_index,
+                block=block,
+            )
+
+            record["trial_index_global"] = self.global_trial_index
+            self.global_trial_index += 1
+
+            self.writer.write_trial(record)
+
+    def run_rest(self, label: str, duration: float | None = None) -> None:
+        rest_duration = (
+            float(duration)
+            if duration is not None
+            else float(self.design.get("rest_duration", 0))
+        )
+
+        if rest_duration <= 0:
+            return
+
+        self.hardware.marker(MARKER_REST_START)
+        self.hardware.eyetracker_message(
+            f"REST_START_{label}_t{self.clock.time:.3f}"
+        )
+
+        self.show_fixation(rest_duration)
+
+        self.hardware.marker(MARKER_REST_END)
+        self.hardware.eyetracker_message(
+            f"REST_END_{label}_t{self.clock.time:.3f}"
+        )
+
+    def finish(self) -> Path | None:
+        self.hardware.marker(MARKER_END)
+        self.hardware.eyetracker_message(f"END_EXPERIMENT_t{self.clock.time:.3f}")
+
+        try:
+            self.hardware.stop_microphone(self.clock)
+        except Exception:
+            pass
+
+        try:
+            self.hardware.eyetracker_stop_and_download(self.writer.output_dir)
+        except Exception:
+            pass
+
+        saved = self.writer.save_final()
+        self.writer.close()
+
+        try:
+            self.print_summary()
+        except Exception as exc:
+            self.logger.warning(f"Résumé impossible : {exc}")
+
+        try:
+            self.show_text_timed(
+                "Fin de la session.\n\nMerci pour votre participation.",
+                self.settings.end_screen_seconds,
+            )
+        except Exception:
+            pass
+
+        return saved
+
+    # ------------------------------------------------------------------
+    # Helpers écran / clavier
+    # ------------------------------------------------------------------
+
+    def flush_keyboard(self) -> None:
+        self.keyboard.clearEvents()
+
+    def get_keys(self, key_list: list[str] | None = None):
+        check_keys = list(key_list or [])
+
+        if self.settings.quit_key not in check_keys:
+            check_keys.append(self.settings.quit_key)
+
+        keys = self.keyboard.getKeys(keyList=check_keys, waitRelease=False)
+
+        for key in keys:
+            if key.name == self.settings.quit_key:
+                raise AbortExperiment(
+                    f"Escape pressé à t={self.clock.time:.3f}"
+                )
+
+        return [key for key in keys if key.name != self.settings.quit_key]
+
+    def show_fixation(self, duration: float) -> None:
+        deadline = self.clock.time + duration
+
+        while self.clock.time < deadline:
+            self.fixation.draw()
+            self.win.flip()
+            self.get_keys([])
+
+    def show_text_wait(self, text: str) -> None:
+        self.text.text = text
+
+        while True:
+            self.text.draw()
+            self.win.flip()
+
+            keys = self.get_keys(None)
+
+            if keys:
+                self.flush_keyboard()
+                return
+
+    def show_text_timed(self, text: str, duration: float) -> None:
+        self.text.text = text
+        deadline = self.clock.time + duration
+
+        while self.clock.time < deadline:
+            self.text.draw()
+            self.win.flip()
+            self.get_keys([])
+
+    # ------------------------------------------------------------------
+    # Enregistrement
+    # ------------------------------------------------------------------
+
+    def record(
+        self,
+        block_index: int,
+        trial_index: int,
+        block: dict,
+        onset: float,
+        duration: float,
+        trial_type: str,
+        **fields,
+    ) -> dict:
+        """Crée un record uniforme pour toutes les tâches."""
+
+        base = {
+            "onset": round(onset, 4),
+            "duration": round(duration, 4),
+            "trial_type": trial_type,
+            "participant": self.settings.participant,
+            "session": self.settings.session,
+            "run": self.run_id,
+            "task": self.task_name,
+            "design_id": self.design_id,
+            "design_name": self.design.get("name", ""),
+            "seed": self.seed,
+            "trigger_wall_time": self.clock.trigger_wall_time or "",
+            "block_index": block_index,
+            "block_condition": block.get("condition", ""),
+            "trial_index": trial_index,
+            "wall_time": datetime.now().isoformat(timespec="milliseconds"),
         }
+
+        base.update(fields)
+        return base
+
+    def write_design_sidecar(self) -> None:
+        payload = {
+            "task": self.task_name,
+            "design_id": self.design_id,
+            "design_name": self.design.get("name", ""),
+            "run": self.run_id,
+            "participant": self.settings.participant,
+            "session": self.settings.session,
+            "seed": self.seed,
+            "design": self.design,
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+        }
+
+        path = self.writer.output_dir / f"{self.writer.stem}_design.json"
+
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception as exc:
+            self.logger.warning(f"Sidecar design non écrit : {exc}")
+
+    def _resolve_design(self, design_id: int) -> dict:
+        designs = self.config.get("designs", {})
+
+        if design_id not in designs:
+            available = ", ".join(str(key) for key in sorted(designs))
+            raise TaskConfigurationError(
+                f"Design {design_id} absent pour {self.task_name}. "
+                f"Disponibles : {available}"
+            )
+
+        return deepcopy(designs[design_id])
