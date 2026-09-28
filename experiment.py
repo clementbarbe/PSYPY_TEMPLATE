@@ -230,12 +230,6 @@ class Experiment:
         )
 
     def _create_window(self):
-        """
-        Crée la fenêtre PsychoPy.
-
-        `size` doit toujours être une résolution valide, y compris lorsque
-        fullscr=True : PsychoPy n'accepte pas size=None.
-        """
         monitor = monitors.Monitor(
             name="experiment_monitor",
             width=self.settings.width_cm,
@@ -254,6 +248,12 @@ class Experiment:
             allowGUI=False,
             waitBlanking=True,
         )
+
+        # Cache le curseur dès l'ouverture de la fenêtre PsychoPy.
+        try:
+            win.mouseVisible = False
+        except Exception:
+            pass
 
         if self.settings.flip_horizontal or self.settings.flip_vertical:
             win.viewScale = [
