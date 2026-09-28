@@ -167,6 +167,16 @@ class BaseTask:
     # ------------------------------------------------------------------
 
     def run(self) -> Path | None:
+        """
+        Exécute la tâche.
+
+        Important :
+        - aucun repos initial implicite après le trigger ;
+        - aucun repos final implicite ;
+        - les repos entre blocs restent contrôlés par les tâches/designs ;
+        - un design peut demander explicitement un repos initial/final
+        avec initial_rest_duration / final_rest_duration.
+        """
         saved = None
 
         try:
@@ -177,15 +187,26 @@ class BaseTask:
             self.hardware.marker(MARKER_START)
             self.hardware.eyetracker_message("START_EXPERIMENT")
 
-            self.run_rest("initial")
+            # Repos initial UNIQUEMENT s'il est explicitement demandé.
+            initial_rest = float(self.design.get("initial_rest_duration", 0.0))
 
+            if initial_rest > 0:
+                self.run_rest("initial", duration=initial_rest)
+
+            # Blocs expérimentaux.
             for block_index, block in enumerate(self.blocks):
                 self.run_block(block_index, block)
 
+                # Repos uniquement ENTRE les blocs.
                 if block_index < len(self.blocks) - 1:
                     self.run_rest(f"after_block_{block_index + 1}")
 
-            self.run_rest("final")
+            # Repos final UNIQUEMENT s'il est explicitement demandé.
+            final_rest = float(self.design.get("final_rest_duration", 0.0))
+
+            if final_rest > 0:
+                self.run_rest("final", duration=final_rest)
+
             self.logger.ok("Tâche terminée normalement.")
 
         except AbortExperiment as exc:
@@ -345,12 +366,34 @@ class BaseTask:
         self.keyboard.clearEvents()
 
     def get_keys(self, key_list: list[str] | None = None):
-        check_keys = list(key_list or [])
+        """
+        Lit le clavier sans bloquer.
 
-        if self.settings.quit_key not in check_keys:
-            check_keys.append(self.settings.quit_key)
+        Règles :
+        - key_list=None : accepte toutes les touches, avec Escape surveillé.
+        Utilisé pour les écrans d'instructions « Appuyez sur une touche ».
+        - key_list=[] : surveille uniquement Escape.
+        Utilisé pendant les périodes où aucune réponse ne doit être prise.
+        - key_list=["left", "right"] : accepte ces touches et surveille Escape.
+        """
+        # None signifie réellement « toutes les touches ».
+        if key_list is None:
+            keys = self.keyboard.getKeys(
+                keyList=None,
+                waitRelease=False,
+            )
 
-        keys = self.keyboard.getKeys(keyList=check_keys, waitRelease=False)
+        else:
+            # [] signifie « aucune réponse comportementale, Escape seulement ».
+            check_keys = list(key_list)
+
+            if self.settings.quit_key not in check_keys:
+                check_keys.append(self.settings.quit_key)
+
+            keys = self.keyboard.getKeys(
+                keyList=check_keys,
+                waitRelease=False,
+            )
 
         for key in keys:
             if key.name == self.settings.quit_key:
@@ -358,7 +401,18 @@ class BaseTask:
                     f"Escape pressé à t={self.clock.time:.3f}"
                 )
 
-        return [key for key in keys if key.name != self.settings.quit_key]
+        # Pendant instructions : renvoyer toute touche sauf Escape.
+        if key_list is None:
+            return [
+                key for key in keys
+                if key.name != self.settings.quit_key
+            ]
+
+        # Pendant un essai : renvoyer seulement les touches de réponse.
+        return [
+            key for key in keys
+            if key.name != self.settings.quit_key
+        ]
 
     def show_fixation(self, duration: float) -> None:
         deadline = self.clock.time + duration

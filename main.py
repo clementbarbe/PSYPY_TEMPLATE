@@ -17,12 +17,49 @@ CLI :
 
 from __future__ import annotations
 
-import argparse
+# ---------------------------------------------------------------------
+# IMPORTANT : X11 doit être initialisé AVANT tkinter et PsychoPy.
+#
+# Sans cela, PTB/PsychHID peut afficher :
+# "libX11 library was not initialized for thread-safe mode".
+# ---------------------------------------------------------------------
+
+import ctypes
+import os
 import sys
 from pathlib import Path
+import argparse
+
+
+def init_x11_threads() -> None:
+    """
+    Initialise X11 en mode thread-safe sous Linux.
+
+    Cette fonction doit être appelée avant l'import de tkinter,
+    wxPython, Qt ou PsychoPy, car ces bibliothèques utilisent X11.
+    """
+    if not sys.platform.startswith("linux"):
+        return
+
+    # Workaround également reconnu par Psychtoolbox.
+    os.environ.setdefault("PSYCH_XINITTHREADS", "1")
+
+    try:
+        xlib = ctypes.CDLL("libX11.so.6")
+        xlib.XInitThreads()
+    except Exception:
+        # Une absence de libX11 ou un environnement non-X11 ne doit pas
+        # empêcher le lancement du projet.
+        pass
+
+
+init_x11_threads()
+
 
 ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(ROOT))
+
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -35,38 +72,62 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Affiche les tâches détectées automatiquement.",
     )
+
     parser.add_argument("--task", help="Nom de la tâche.")
     parser.add_argument("--design", default="1", help="Identifiant du design.")
     parser.add_argument("--participant", "--pid", dest="participant")
+
+    # Conservé pour compatibilité CLI mais non affiché dans le GUI.
     parser.add_argument("--session", default="01")
-    parser.add_argument("--screen", type=int, default=None)
-    parser.add_argument("--seed", type=int, default=None)
 
     parser.add_argument(
-        "--windowed",
-        action="store_true",
-        help="Lance en fenêtre plutôt qu'en plein écran.",
+        "--screen",
+        type=int,
+        default=None,
+        help="Index PsychoPy de l'écran à utiliser.",
     )
+
+    parser.add_argument(
+        "--fullscreen",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Force le plein écran ou le mode fenêtré.",
+    )
+
     parser.add_argument(
         "--wait-trigger",
-        action="store_true",
-        help="Force l'attente d'un trigger, indépendamment du settings.yaml.",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Active ou désactive explicitement l'attente du trigger. "
+            "Exemples : --wait-trigger / --no-wait-trigger"
+        ),
     )
+
     parser.add_argument(
-        "--no-markers",
-        action="store_true",
-        help="Désactive les marqueurs TTL/série pour ce lancement.",
+        "--markers",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Active ou désactive les marqueurs TTL/série. "
+            "Exemples : --markers / --no-markers"
+        ),
     )
+
+    parser.add_argument("--seed", type=int, default=None)
+
     parser.add_argument(
         "--no-save",
         action="store_true",
         help="N'écrit pas de données sur disque.",
     )
+
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Valide tâche/design/séquence sans ouvrir de fenêtre PsychoPy.",
     )
+
     parser.add_argument(
         "--settings",
         default="settings.yaml",
@@ -111,10 +172,10 @@ def run_cli(args: argparse.Namespace) -> int:
         path=Path(args.settings),
         participant=args.participant,
         session=args.session,
-        fullscreen=not args.windowed,
+        fullscreen=args.fullscreen,
         screen_index=args.screen,
-        wait_for_trigger=args.wait_trigger if args.wait_trigger else None,
-        markers_enabled=False if args.no_markers else None,
+        wait_for_trigger=args.wait_trigger,
+        markers_enabled=args.markers,
         save_data=not args.no_save,
     )
 
@@ -126,6 +187,7 @@ def run_cli(args: argparse.Namespace) -> int:
 
     if design_id not in task_config["designs"]:
         available = ", ".join(str(x) for x in sorted(task_config["designs"]))
+
         raise SystemExit(
             f"Design {design_id} invalide pour '{task_name}'. "
             f"Disponibles : {available}"
@@ -137,10 +199,12 @@ def run_cli(args: argparse.Namespace) -> int:
             design_id=design_id,
             seed=args.seed,
         )
+
         print(
             f"[OK] Dry-run valide : "
             f"task={task_name}, design={design_id}, seed={args.seed}"
         )
+
         return 0
 
     experiment = Experiment(settings)
@@ -171,7 +235,7 @@ def main() -> int:
         print_tasks()
         return 0
 
-    # Sans argument de tâche, ouvrir le GUI.
+    # Aucun --task : lancement GUI.
     if not args.task:
         from gui import show_gui
 
@@ -184,11 +248,14 @@ def main() -> int:
         args.task = config["task"]
         args.design = str(config["design"])
         args.participant = config["participant"]
-        args.session = config["session"]
+
+        # Le GUI ne montre plus la session.
+        args.session = "01"
+
         args.screen = config["screen"]
-        args.windowed = not config["fullscreen"]
+        args.fullscreen = config["fullscreen"]
         args.wait_trigger = config["wait_trigger"]
-        args.no_markers = not config["markers_enabled"]
+        args.markers = config["markers_enabled"]
         args.no_save = not config["save_data"]
 
     return run_cli(args)

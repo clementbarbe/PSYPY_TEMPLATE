@@ -1,248 +1,415 @@
 """
-GUI générique tkinter.
+GUI PyQt6 compact.
 
-Aucune classe spécifique à Flanker, Stroop, N-Back ou Oddball :
-les tâches et designs sont lus automatiquement dans tasks/*/config.yaml.
+- Tâches détectées automatiquement.
+- Un onglet par tâche.
+- Un bouton direct par design.
+- Session toujours "01".
+- Plein écran toujours activé.
+- Attente trigger toujours activée.
+- Écran maximal sélectionné par défaut.
+- Seuls l'écran maximal et l'écran précédent sont proposés.
 """
 
 from __future__ import annotations
 
-import tkinter as tk
+import sys
 from pathlib import Path
-from tkinter import messagebox, ttk
 
-from experiment import sanitize_id, sanitize_session
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+from experiment import sanitize_id
 from tasks import list_tasks, load_task_config
 
 
-def show_gui(settings_path: Path) -> dict | None:
-    root = tk.Tk()
-    root.title("Configuration expérimentale")
-    root.geometry("600x430")
-    root.resizable(False, False)
+STYLESHEET = """
+QMainWindow, QWidget#central {
+    background-color: #1e1e1e;
+}
 
-    result = {"value": None}
+QGroupBox {
+    color: #cccccc;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    margin-top: 10px;
+    padding: 12px 8px 8px 8px;
+    font-weight: bold;
+}
 
-    participant_var = tk.StringVar()
-    session_var = tk.StringVar(value="01")
-    screen_var = tk.IntVar(value=0)
-    fullscreen_var = tk.BooleanVar(value=True)
-    trigger_var = tk.BooleanVar(value=False)
-    markers_var = tk.BooleanVar(value=False)
-    save_var = tk.BooleanVar(value=True)
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+}
 
-    task_names = list_tasks()
+QLabel {
+    color: #cccccc;
+}
 
-    if not task_names:
-        messagebox.showerror(
-            "Erreur",
-            "Aucune tâche détectée dans le dossier tasks/.",
+QLineEdit, QComboBox {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+    border: 1px solid #3c3c3c;
+    border-radius: 3px;
+    padding: 4px 6px;
+    selection-background-color: #264f78;
+}
+
+QLineEdit:focus, QComboBox:focus {
+    border-color: #0078d4;
+}
+
+QCheckBox {
+    color: #cccccc;
+    spacing: 6px;
+}
+
+QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+}
+
+QTabWidget::pane {
+    border: 1px solid #3c3c3c;
+    background-color: #1e1e1e;
+    top: -1px;
+}
+
+QTabBar::tab {
+    background-color: #2d2d2d;
+    color: #999999;
+    padding: 8px 18px;
+    border: 1px solid #3c3c3c;
+    border-bottom: none;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    margin-right: 1px;
+}
+
+QTabBar::tab:selected {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #252525;
+}
+
+QPushButton {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+    border: 1px solid #3c3c3c;
+    border-radius: 3px;
+    padding: 5px 14px;
+}
+
+QPushButton:hover {
+    background-color: #353535;
+    border-color: #4c4c4c;
+}
+
+QPushButton:pressed {
+    background-color: #1a1a1a;
+}
+
+QPushButton#run {
+    background-color: #0e639c;
+    border-color: #1177bb;
+    color: white;
+    font-weight: bold;
+    padding: 6px 18px;
+    min-height: 28px;
+}
+
+QPushButton#run:hover {
+    background-color: #1177bb;
+}
+
+QPushButton#run:pressed {
+    background-color: #0e639c;
+}
+
+QLabel#taskDescription {
+    color: #808080;
+    font-size: 11px;
+    padding: 4px;
+}
+"""
+
+
+def available_screen_indices() -> list[int]:
+    """
+    Retourne uniquement les deux plus grands index des écrans disponibles.
+
+    1 écran  -> [0]
+    2 écrans -> [0, 1]
+    3 écrans -> [1, 2]
+    """
+    app = QApplication.instance()
+
+    if app is None:
+        return [0]
+
+    count = len(app.screens())
+
+    if count <= 1:
+        return [0]
+
+    maximum = count - 1
+    return [maximum - 1, maximum]
+
+
+class TaskPanel(QWidget):
+    """Onglet générique créé automatiquement depuis config.yaml."""
+
+    def __init__(self, menu: "ExperimentMenu", task_name: str):
+        super().__init__()
+
+        self.menu = menu
+        self.task_name = task_name
+        self.config = load_task_config(task_name)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(8)
+
+        description = self.config.get("description", "")
+
+        if description:
+            label = QLabel(description)
+            label.setObjectName("taskDescription")
+            label.setWordWrap(True)
+            layout.addWidget(label)
+
+        group = QGroupBox("Designs")
+        grid = QGridLayout(group)
+        grid.setSpacing(6)
+
+        designs = self.config.get("designs", {})
+
+        for index, (design_id, design) in enumerate(sorted(designs.items())):
+            name = design.get("name", f"Design {design_id}")
+
+            button = QPushButton(f"Design {design_id}")
+            button.setObjectName("run")
+            button.setToolTip(name)
+
+            button.clicked.connect(
+                lambda _checked=False, did=design_id: self.launch(did)
+            )
+
+            grid.addWidget(button, index // 2, index % 2)
+
+        layout.addWidget(group)
+
+        summary_lines = []
+
+        for design_id, design in sorted(designs.items()):
+            name = design.get("name", f"Design {design_id}")
+            blocks = design.get("blocks", [])
+            n_blocks = len(blocks)
+            n_trials = sum(int(block.get("n_trials", 0)) for block in blocks)
+
+            summary_lines.append(
+                f"D{design_id}: {name} — "
+                f"{n_blocks} bloc(s), {n_trials} essai(s)"
+            )
+
+        if summary_lines:
+            summary = QLabel("\n".join(summary_lines))
+            summary.setObjectName("taskDescription")
+            summary.setWordWrap(True)
+            layout.addWidget(summary)
+
+        layout.addStretch()
+
+    def launch(self, design_id: int) -> None:
+        self.menu.run_experiment(self.task_name, design_id)
+
+
+class ExperimentMenu(QMainWindow):
+    def __init__(self, settings_path: Path):
+        super().__init__()
+
+        self.settings_path = settings_path
+        self.final_config: dict | None = None
+
+        self.setWindowTitle("Configuration expérimentale")
+        self.setStyleSheet(STYLESHEET)
+        self.setMinimumWidth(580)
+        self.setMinimumHeight(390)
+
+        self._build()
+
+    def _build(self) -> None:
+        central = QWidget()
+        central.setObjectName("central")
+        self.setCentralWidget(central)
+
+        root = QVBoxLayout(central)
+        root.setContentsMargins(12, 12, 12, 12)
+        root.setSpacing(10)
+
+        # --------------------------------------------------------------
+        # Configuration générale
+        # --------------------------------------------------------------
+
+        cfg = QGroupBox("Configuration")
+        grid = QGridLayout(cfg)
+        grid.setSpacing(6)
+
+        grid.addWidget(QLabel("Participant :"), 0, 0)
+
+        self.participant_input = QLineEdit()
+        self.participant_input.setPlaceholderText("ID")
+        self.participant_input.setFixedWidth(150)
+        grid.addWidget(self.participant_input, 0, 1)
+
+        grid.addWidget(QLabel("Écran :"), 0, 2)
+
+        self.screen_combo = QComboBox()
+        self.screen_combo.setFixedWidth(165)
+        self._populate_screens()
+        grid.addWidget(self.screen_combo, 0, 3)
+
+        options = QHBoxLayout()
+        options.setSpacing(16)
+
+        self.save_checkbox = QCheckBox("Sauvegarder")
+        self.save_checkbox.setChecked(True)
+        options.addWidget(self.save_checkbox)
+
+        self.markers_checkbox = QCheckBox("Marqueurs")
+        self.markers_checkbox.setChecked(False)
+        options.addWidget(self.markers_checkbox)
+
+        options.addStretch()
+        grid.addLayout(options, 1, 0, 1, 4)
+
+        hint = QLabel(
+            "Session fixe : 01   |   "
+            "Plein écran et attente du trigger activés systématiquement."
         )
-        root.destroy()
-        return None
+        hint.setObjectName("taskDescription")
+        grid.addWidget(hint, 2, 0, 1, 4)
 
-    task_var = tk.StringVar(value=task_names[0])
-    design_var = tk.StringVar()
+        root.addWidget(cfg)
 
-    outer = ttk.Frame(root, padding=16)
-    outer.pack(fill="both", expand=True)
+        # --------------------------------------------------------------
+        # Onglets de tâches
+        # --------------------------------------------------------------
 
-    # ------------------------------------------------------------------
-    # Session
-    # ------------------------------------------------------------------
+        self.tabs = QTabWidget()
 
-    session_frame = ttk.LabelFrame(outer, text="Session", padding=10)
-    session_frame.pack(fill="x")
-
-    ttk.Label(session_frame, text="Participant").grid(
-        row=0,
-        column=0,
-        sticky="w",
-        padx=4,
-        pady=4,
-    )
-
-    ttk.Entry(
-        session_frame,
-        textvariable=participant_var,
-        width=22,
-    ).grid(row=0, column=1, sticky="w", padx=4, pady=4)
-
-    ttk.Label(session_frame, text="Session").grid(
-        row=0,
-        column=2,
-        sticky="w",
-        padx=4,
-        pady=4,
-    )
-
-    ttk.Entry(
-        session_frame,
-        textvariable=session_var,
-        width=8,
-    ).grid(row=0, column=3, sticky="w", padx=4, pady=4)
-
-    ttk.Label(session_frame, text="Écran").grid(
-        row=1,
-        column=0,
-        sticky="w",
-        padx=4,
-        pady=4,
-    )
-
-    ttk.Spinbox(
-        session_frame,
-        from_=0,
-        to=9,
-        textvariable=screen_var,
-        width=6,
-    ).grid(row=1, column=1, sticky="w", padx=4, pady=4)
-
-    ttk.Checkbutton(
-        session_frame,
-        text="Plein écran",
-        variable=fullscreen_var,
-    ).grid(row=1, column=2, sticky="w", padx=4, pady=4)
-
-    ttk.Checkbutton(
-        session_frame,
-        text="Attendre trigger",
-        variable=trigger_var,
-    ).grid(row=2, column=0, sticky="w", padx=4, pady=4)
-
-    ttk.Checkbutton(
-        session_frame,
-        text="Envoyer marqueurs",
-        variable=markers_var,
-    ).grid(row=2, column=1, sticky="w", padx=4, pady=4)
-
-    ttk.Checkbutton(
-        session_frame,
-        text="Sauvegarder",
-        variable=save_var,
-    ).grid(row=2, column=2, sticky="w", padx=4, pady=4)
-
-    # ------------------------------------------------------------------
-    # Tâche
-    # ------------------------------------------------------------------
-
-    task_frame = ttk.LabelFrame(outer, text="Tâche", padding=10)
-    task_frame.pack(fill="x", pady=(12, 0))
-
-    ttk.Label(task_frame, text="Tâche").grid(
-        row=0,
-        column=0,
-        sticky="w",
-        padx=4,
-        pady=4,
-    )
-
-    task_box = ttk.Combobox(
-        task_frame,
-        textvariable=task_var,
-        values=task_names,
-        state="readonly",
-        width=25,
-    )
-    task_box.grid(row=0, column=1, sticky="w", padx=4, pady=4)
-
-    ttk.Label(task_frame, text="Design").grid(
-        row=1,
-        column=0,
-        sticky="w",
-        padx=4,
-        pady=4,
-    )
-
-    design_box = ttk.Combobox(
-        task_frame,
-        textvariable=design_var,
-        state="readonly",
-        width=45,
-    )
-    design_box.grid(row=1, column=1, sticky="w", padx=4, pady=4)
-
-    description = ttk.Label(
-        task_frame,
-        text="",
-        justify="left",
-        wraplength=500,
-    )
-    description.grid(
-        row=2,
-        column=0,
-        columnspan=2,
-        sticky="w",
-        padx=4,
-        pady=(10, 4),
-    )
-
-    designs_by_label: dict[str, int] = {}
-
-    def update_designs(*_):
-        nonlocal designs_by_label
-
-        cfg = load_task_config(task_var.get())
-        designs_by_label = {}
-
-        labels = []
-
-        for design_id, design in sorted(cfg["designs"].items()):
-            label = f"{design_id} — {design.get('name', 'Sans nom')}"
-            labels.append(label)
-            designs_by_label[label] = design_id
-
-        design_box["values"] = labels
-        design_var.set(labels[0])
-
-        description.configure(
-            text=cfg.get("description", "")
-        )
-
-    task_box.bind("<<ComboboxSelected>>", update_designs)
-    update_designs()
-
-    # ------------------------------------------------------------------
-    # Boutons
-    # ------------------------------------------------------------------
-
-    buttons = ttk.Frame(outer)
-    buttons.pack(fill="x", pady=(18, 0))
-
-    def launch():
-        try:
-            participant = sanitize_id(participant_var.get())
-            session = sanitize_session(session_var.get())
-
-            selected_design = designs_by_label[design_var.get()]
-
-        except Exception as exc:
-            messagebox.showerror("Configuration invalide", str(exc))
-            return
-
-        result["value"] = {
-            "participant": participant,
-            "session": session,
-            "screen": int(screen_var.get()),
-            "fullscreen": bool(fullscreen_var.get()),
-            "wait_trigger": bool(trigger_var.get()),
-            "markers_enabled": bool(markers_var.get()),
-            "save_data": bool(save_var.get()),
-            "task": task_var.get(),
-            "design": selected_design,
+        display_names = {
+            "flanker": "Flanker",
+            "nback": "N-Back",
+            "oddball": "Oddball",
+            "stroop": "Stroop",
         }
 
-        root.destroy()
+        for task_name in list_tasks():
+            tab_name = display_names.get(task_name, task_name.title())
+            self.tabs.addTab(TaskPanel(self, task_name), tab_name)
 
-    ttk.Button(buttons, text="Annuler", command=root.destroy).pack(
-        side="right",
-        padx=4,
-    )
+        root.addWidget(self.tabs)
 
-    ttk.Button(buttons, text="Lancer", command=launch).pack(
-        side="right",
-        padx=4,
-    )
+    def _populate_screens(self) -> None:
+        indices = available_screen_indices()
+        maximum = max(indices)
 
-    root.mainloop()
-    return result["value"]
+        for index in indices:
+            label = (
+                f"Écran {index} (max)"
+                if index == maximum
+                else f"Écran {index} (précédent)"
+            )
+
+            self.screen_combo.addItem(label, userData=index)
+
+        position = self.screen_combo.findData(maximum)
+
+        if position >= 0:
+            self.screen_combo.setCurrentIndex(position)
+
+    def validate(self) -> dict | None:
+        try:
+            participant = sanitize_id(self.participant_input.text())
+
+        except Exception as exc:
+            QMessageBox.warning(self, "Participant invalide", str(exc))
+            return None
+
+        screen = self.screen_combo.currentData()
+
+        if screen is None:
+            QMessageBox.warning(
+                self,
+                "Écran invalide",
+                "Veuillez sélectionner un écran.",
+            )
+            return None
+
+        return {
+            "participant": participant,
+            "session": "01",
+            "screen": int(screen),
+
+            # Paramètres imposés, volontairement absents du GUI.
+            "fullscreen": True,
+            "wait_trigger": True,
+
+            "markers_enabled": self.markers_checkbox.isChecked(),
+            "save_data": self.save_checkbox.isChecked(),
+        }
+
+    def run_experiment(self, task_name: str, design_id: int) -> None:
+        config = self.validate()
+
+        if config is None:
+            return
+
+        self.final_config = {
+            **config,
+            "task": task_name,
+            "design": design_id,
+        }
+
+        # Le menu disparaît avant ouverture de la fenêtre PsychoPy.
+        self.close()
+
+        app = QApplication.instance()
+
+        if app is not None:
+            app.quit()
+
+    def closeEvent(self, event) -> None:
+        event.accept()
+
+
+def show_gui(settings_path: Path) -> dict | None:
+    app = QApplication.instance()
+
+    if app is None:
+        app = QApplication(sys.argv)
+
+    menu = ExperimentMenu(settings_path)
+    menu.show()
+
+    app.exec()
+
+    return menu.final_config

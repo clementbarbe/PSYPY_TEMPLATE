@@ -230,6 +230,12 @@ class Experiment:
         )
 
     def _create_window(self):
+        """
+        Crée la fenêtre PsychoPy.
+
+        `size` doit toujours être une résolution valide, y compris lorsque
+        fullscr=True : PsychoPy n'accepte pas size=None.
+        """
         monitor = monitors.Monitor(
             name="experiment_monitor",
             width=self.settings.width_cm,

@@ -7,8 +7,14 @@
 
 project:
   data_dir: data
+
+  # Développement local : fenêtre par défaut.
+  # Pour l'IRM, passer à true.
   fullscreen: true
+
+  # Le GUI choisira automatiquement le plus grand index disponible.
   default_screen: 0
+
   quit_key: escape
   end_screen_seconds: 3.0
 
@@ -23,16 +29,16 @@ display:
 
 input:
   trigger:
-    # false : une touche démarre directement l'expérience.
-    # true  : attente de la touche ou du byte de trigger configuré.
-    enabled: false
-    source: keyboard       # keyboard | serial
+    # Développement local : pas de trigger obligatoire.
+    # Pour IRM : true.
+    enabled: true
+
+    source: keyboard
     key: t
     serial_port: ""
     baudrate: 115200
     timeout_seconds: 300.0
 
-  # Touches génériques disponibles pour toutes les tâches.
   responses:
     left: left
     right: right
@@ -41,17 +47,11 @@ input:
 
 output:
   markers:
-    # Envoi de TTL/marqueurs d'événements.
     enabled: false
-    transport: none        # none | parallel | serial
-
-    # Utilisé si transport: parallel
+    transport: none
     parallel_address: null
-
-    # Utilisé si transport: serial
     serial_port: ""
     baudrate: 115200
-
     pulse_seconds: 0.005
 
 audio:
