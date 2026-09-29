@@ -18,13 +18,13 @@ Template simple pour tâches comportementales et IRMf avec PsychoPy.
     ├── nback/
     ├── oddball/
     └── stroop/
-
+```
 Démarrer
 
-bash
+```bash
 pip install -r requirements.txt
 python main.py
-
+```
 CLI
 
 Lister les tâches :
@@ -34,44 +34,44 @@ python main.py --list-tasks
 
 Lancer Stroop :
 
-bash
+```bash
 python main.py \
     --task stroop \
     --design 1 \
     --participant 01 \
     --session 01
-
+```
 Lancer en fenêtre :
 
-bash
+```bash
 python main.py \
     --task flanker \
     --design 2 \
     --participant 01 \
     --windowed
-
+```
 Vérifier une tâche sans ouvrir PsychoPy :
 
-bash
+```bash
 python main.py \
     --task stroop \
     --design 1 \
     --participant TEST \
     --dry-run
-
+```
 Ajouter une tâche
 
 Créer seulement :
 
-text
+```text
 tasks/
 └── ma_tache/
     ├── task.py
     └── config.yaml
 
 tasks/ma_tache/config.yaml
-
-yaml
+```
+```yaml
 name: "Ma tâche"
 
 designs:
@@ -80,10 +80,10 @@ designs:
     stim_duration: 1.0
     blocks:
       - {condition: test, n_trials: 20}
-
+```
 tasks/ma_tache/task.py
 
-python
+```python
 from psychopy import visual
 from tasks.base import BaseTask
 
@@ -122,7 +122,7 @@ class Task(BaseTask):
             duration=1.0,
             trial_type=trial["condition"],
         )
-
+```
 La tâche est détectée automatiquement dans :
 
     le GUI ;
@@ -148,7 +148,7 @@ Données
 
 Les sorties sont créées automatiquement :
 
-text
+```text
 data/
 └── sub-01/
     └── ses-01/
@@ -158,17 +158,17 @@ data/
         │   └── sub-01_ses-01_task-stroop_design-1_run-01_design.json
         │
         └── logs/
-
+```
 Tests
 
-bash
+```bash
 pytest -q
-
+```
 Audit spécifique Stroop :
 
-bash
+```bash
 python tools/check_stroop_designs.py --repeats 200
-
+```
 Matériel
 
 Le template fonctionne sans matériel spécifique.
@@ -185,19 +185,3 @@ Les fonctionnalités suivantes sont optionnelles :
 
 Aucune logique ne dépend de CIMA, PRISMA, TERRA ou d’un site particulier.
 
-yaml
-
----
-
-## Points à corriger avant la première exécution
-
-Il y a deux corrections importantes à effectuer dans le code ci-dessus avant usage réel.
-
-### Correction 1 — import Stroop dynamique
-
-Le chargement dynamique de `tasks/stroop/task.py` implique que :
-
-```python
-from tasks.stroop.sequence import ...
-
-doit pouvoir fonctionner.
