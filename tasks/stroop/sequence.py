@@ -13,13 +13,14 @@ Garanties :
 from __future__ import annotations
 
 from collections import Counter
-from typing import Iterable
+import random
+from typing import Any, Iterable
 
 
 TRIAL_TYPES = ("neutral", "congruent", "incongruent")
 
 
-def split_evenly(total: int, categories: list[str], rng) -> dict[str, int]:
+def split_evenly(total: int, categories: list[str], rng: random.Random) -> dict[str, int]:
     """
     Répartit total entre les catégories avec un écart maximal de 1.
 
@@ -45,7 +46,7 @@ def split_evenly(total: int, categories: list[str], rng) -> dict[str, int]:
     return result
 
 
-def max_run(values: Iterable) -> int:
+def max_run(values: Iterable[Any]) -> int:
     """Retourne la longueur maximale d'une répétition consécutive."""
     values = list(values)
 
@@ -119,7 +120,7 @@ def _valid_candidate(
 
 def _build_type_schedule(
     trials: list[dict],
-    rng,
+    rng: random.Random,
 ) -> list[str] | None:
     """
     Construit un ordre de trial_type où deux types successifs diffèrent.
@@ -163,7 +164,7 @@ def _build_type_schedule(
 def _choose_candidate(
     candidates: list[dict],
     remaining_trials: list[dict],
-    rng,
+    rng: random.Random,
 ) -> dict:
     """
     Choisit un essai admissible.
@@ -195,7 +196,7 @@ def _choose_candidate(
 
 def order_trials(
     trials: list[dict],
-    rng,
+    rng: random.Random,
     max_same_word: int = 2,
     max_same_ink: int = 2,
     max_same_type: int | None = None,
@@ -309,7 +310,7 @@ def build_condition_trials(
     colors: list[str],
     color_words: dict[str, str],
     neutral_words: list[str],
-    rng,
+    rng: random.Random,
 ) -> list[dict]:
     """Construit les essais d'une seule condition Stroop."""
 
@@ -393,7 +394,7 @@ def build_event_trials(
     colors: list[str],
     color_words: dict[str, str],
     neutral_words: list[str],
-    rng,
+    rng: random.Random,
 ) -> list[dict]:
     """
     Construit et ordonne un design event-related équilibré.

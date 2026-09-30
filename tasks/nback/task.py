@@ -1,16 +1,21 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from typing import Any
 
-from psychopy import visual
+from collections import defaultdict
 
 from tasks.base import BaseTask
 
 
 class Task(BaseTask):
+    """Tâche de mémoire de travail alternant blocs 0-back et N-back."""
+
     NAME = "nback"
 
     def setup(self) -> None:
+        """Crée le stimulus lettre et prépare les réponses cibles."""
+        from psychopy import visual
+
         self.letter = visual.TextStim(
             self.win,
             text="",
@@ -27,6 +32,7 @@ class Task(BaseTask):
         self.markers = self.config.get("markers", {})
 
     def instructions(self) -> str:
+        """Retourne les consignes générales de la tâche."""
         return (
             "N-BACK\n\n"
             f"0-back : appuyez sur [{self.go_key}] "
@@ -38,10 +44,11 @@ class Task(BaseTask):
         )
 
     def block_instruction(self, block_index: int, block: dict) -> str:
+        """Retourne la consigne du niveau courant et sa cible 0-back."""
         level = int(block["level"])
 
         if level == 0:
-            target = self.rng.choice(self.zero_targets)
+            target = block.get("_target") or self.rng.choice(self.zero_targets)
             block["_target"] = target
 
             return (
@@ -59,17 +66,20 @@ class Task(BaseTask):
         )
 
     def build_trials(self, block: dict) -> list[dict]:
+        """Construit tous les essais d’un bloc avant le trigger scanner."""
         level = int(block["level"])
         n = int(block["n_trials"])
         n_targets = max(1, round(n * float(self.design.get("target_ratio", 0.3))))
 
         if level == 0:
             target = block.get("_target") or self.rng.choice(self.zero_targets)
+            block["_target"] = target
             return self.build_zero_back(n, n_targets, target)
 
         return self.build_n_back(level, n, n_targets)
 
     def build_zero_back(self, n: int, n_targets: int, target: str) -> list[dict]:
+        """Construit un bloc 0-back avec un nombre contrôlé de cibles."""
         target_positions = set(self.rng.sample(range(n), min(n_targets, n)))
         trials: list[dict] = []
         previous = None
@@ -88,12 +98,18 @@ class Task(BaseTask):
                 letter = self.rng.choice(available)
                 is_target = False
 
-            trials.append({"letter": letter, "is_target": is_target})
+            trials.append({
+                "letter": letter,
+                "is_target": is_target,
+                "trial_type": "target" if is_target else "nontarget",
+                "zero_back_target": target,
+            })
             previous = letter
 
         return trials
 
     def build_n_back(self, level: int, n: int, n_targets: int) -> list[dict]:
+        """Construit un bloc N-back en imposant les positions cibles."""
         target_positions = set(
             self.rng.sample(
                 list(range(level, n)),
@@ -125,11 +141,22 @@ class Task(BaseTask):
                 is_target = False
 
             letters.append(letter)
-            trials.append({"letter": letter, "is_target": is_target})
+            trials.append({
+                "letter": letter,
+                "is_target": is_target,
+                "trial_type": "target" if is_target else "nontarget",
+            })
 
         return trials
 
-    def run_trial(self, trial, block_index, trial_index, block) -> dict:
+    def run_trial(
+        self,
+        trial: dict[str, Any],
+        block_index: int,
+        trial_index: int,
+        block: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Présente une lettre et classe hit, miss, fausse alarme ou rejet correct."""
         level = int(block["level"])
         letter = trial["letter"]
         is_target = bool(trial["is_target"])
@@ -203,6 +230,7 @@ class Task(BaseTask):
         )
 
     def print_summary(self) -> None:
+        """Affiche l’exactitude globale puis par niveau N-back."""
         records = self.writer.records
 
         if not records:

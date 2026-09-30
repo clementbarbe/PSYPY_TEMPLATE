@@ -1,14 +1,20 @@
 from __future__ import annotations
 
-from psychopy import visual
+from typing import Any
 
+from core.design import DesignGenerator
 from tasks.base import BaseTask
 
 
 class Task(BaseTask):
+    """Tâche Eriksen Flanker visuelle."""
+
     NAME = "flanker"
 
     def setup(self) -> None:
+        """Crée le stimulus de flèches et prépare le mapping des réponses."""
+        from psychopy import visual
+
         self.arrow = visual.TextStim(
             self.win,
             text="",
@@ -30,6 +36,7 @@ class Task(BaseTask):
         self.markers = self.config.get("markers", {})
 
     def instructions(self) -> str:
+        """Retourne les consignes générales du Flanker."""
         return (
             "FLANKER\n\n"
             "Répondez à la direction de la flèche CENTRALE.\n"
@@ -41,12 +48,14 @@ class Task(BaseTask):
         )
 
     def block_instruction(self, block_index: int, block: dict) -> str | None:
+        """Retourne le rappel de consigne affiché avant un bloc."""
         return (
             f"Bloc {block_index + 1}/{len(self.blocks)}\n\n"
             "Répondez à la flèche centrale."
         )
 
     def build_trials(self, block: dict) -> list[dict]:
+        """Construit un bloc équilibré puis applique la pseudo-randomisation."""
         condition = block["condition"]
         n_trials = int(block["n_trials"])
         trials: list[dict] = []
@@ -116,7 +125,15 @@ class Task(BaseTask):
                 }
             )
 
-        self.rng.shuffle(trials)
+        if condition == "mixed":
+            trials = DesignGenerator.shuffle_constrained(
+                trials,
+                rng=self.rng,
+                key=lambda trial: trial["condition"],
+                max_consecutive=int(self.design.get("max_consecutive_condition", 3)),
+            )
+        else:
+            self.rng.shuffle(trials)
 
         for trial in trials:
             trial["isi"] = round(
@@ -129,7 +146,14 @@ class Task(BaseTask):
 
         return trials
 
-    def run_trial(self, trial, block_index, trial_index, block) -> dict:
+    def run_trial(
+        self,
+        trial: dict[str, Any],
+        block_index: int,
+        trial_index: int,
+        block: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Présente un essai Flanker et calcule exactitude et temps de réponse."""
         target = trial["target"]
         flankers = trial["flankers"]
         condition = trial["condition"]
@@ -210,6 +234,7 @@ class Task(BaseTask):
 
     @staticmethod
     def make_arrows(target: str, flankers: str) -> str:
+        """Retourne la chaîne de cinq symboles correspondant à un essai."""
         center = "<" if target == "left" else ">"
 
         if flankers == "neutral":

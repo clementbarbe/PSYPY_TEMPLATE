@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from typing import Any
 
-from psychopy import visual
+from collections import defaultdict
 
 from tasks.base import BaseTask
 from tasks.stroop.sequence import (
@@ -14,10 +14,15 @@ from tasks.stroop.sequence import (
 
 
 class Task(BaseTask):
+    """Stroop couleur-mot en versions bloc et event-related."""
+
     NAME = "stroop"
     PREGENERATE = True
 
     def setup(self) -> None:
+        """Crée les mots, mappings couleur-touche et guide visuel optionnel."""
+        from psychopy import visual
+
         cfg = self.config
         display = cfg.get("display", {})
 
@@ -82,7 +87,13 @@ class Task(BaseTask):
                 )
 
     @classmethod
-    def dry_run(cls, task_config: dict, design_id: int, seed=None) -> None:
+    def dry_run(
+        cls,
+        task_config: dict[str, Any],
+        design_id: int,
+        seed: int | None = None,
+    ) -> None:
+        """Génère et valide complètement un design Stroop sans PsychoPy."""
         super().dry_run(task_config, design_id, seed)
 
         from random import Random
@@ -126,6 +137,7 @@ class Task(BaseTask):
         )
 
     def instructions(self) -> str:
+        """Retourne les consignes générales du Stroop."""
         return (
             "STROOP\n\n"
             "Répondez à la COULEUR de l'encre.\n"
@@ -203,6 +215,7 @@ class Task(BaseTask):
         return prepared_blocks
 
     def validate_trials(self, blocks: list[list]) -> None:
+        """Applique les contraintes spécifiques Stroop à la séquence générée."""
         validate_sequence(
             blocks,
             event_related=self.design.get("paradigm") == "event",
@@ -308,7 +321,13 @@ class Task(BaseTask):
         # leur prochain onset.
         self.next_stim_time = None
 
-    def run_trial(self, trial, block_index, trial_index, block) -> dict:
+    def run_trial(
+        self,
+        trial: dict[str, Any],
+        block_index: int,
+        trial_index: int,
+        block: dict[str, Any],
+    ) -> dict[str, Any]:
         """
         Déroulement exact d'un essai Stroop :
 
@@ -454,18 +473,6 @@ class Task(BaseTask):
 
         is_correct = bool(responded and response_color == ink)
 
-        self.print_trial(
-            block_index=block_index,
-            trial_index=trial_index,
-            onset=stimulus_onset,
-            trial_type=trial_type,
-            word=word,
-            ink=ink,
-            response_key=response_key,
-            correct=is_correct,
-            rt=rt,
-        )
-
         return self.record(
             block_index=block_index,
             trial_index=trial_index,
@@ -535,6 +542,7 @@ class Task(BaseTask):
         )
 
     def print_summary(self) -> None:
+        """Affiche exactitude et RT moyen correct pour chaque condition."""
         records = self.writer.records
 
         if not records:

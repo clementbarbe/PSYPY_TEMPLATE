@@ -1,20 +1,11 @@
-# ============================================================================
-# Configuration globale du template expérimental.
-#
-# Ce fichier contient UNIQUEMENT les paramètres de session/matériel généraux.
-# Les paramètres d'une tâche sont dans tasks/<nom_tache>/config.yaml.
-# ============================================================================
+# Configuration globale : écran, entrées/sorties et matériel.
+# Les paramètres propres à chaque tâche restent dans tasks/<task>/config.yaml.
 
 project:
   data_dir: data
-
-  # Développement local : fenêtre par défaut.
-  # Pour l'IRM, passer à true.
   fullscreen: true
-
-  # Le GUI choisira automatiquement le plus grand index disponible.
   default_screen: 0
-
+  mock_mode: false
   quit_key: escape
   end_screen_seconds: 3.0
 
@@ -29,15 +20,19 @@ display:
 
 input:
   trigger:
-    # Développement local : pas de trigger obligatoire.
-    # Pour IRM : true.
     enabled: true
-
-    source: keyboard
+    source: keyboard        # keyboard | serial | parallel
     key: t
     serial_port: ""
     baudrate: 115200
     timeout_seconds: 300.0
+    parallel_address: null
+    parallel_pin: 10
+
+  response_box:
+    backend: keyboard       # keyboard | serial
+    serial_port: ""
+    baudrate: 115200
 
   responses:
     left: left
@@ -48,7 +43,7 @@ input:
 output:
   markers:
     enabled: false
-    transport: none
+    transport: none         # none | parallel | serial
     parallel_address: null
     serial_port: ""
     baudrate: 115200
@@ -62,6 +57,7 @@ audio:
 
 eyetracker:
   enabled: false
+  backend: eyelink          # eyelink | tobii
   host: "100.1.1.1"
 
 microphone:

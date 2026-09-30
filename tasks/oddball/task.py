@@ -1,14 +1,21 @@
 from __future__ import annotations
 
+from typing import Any
+
 from statistics import NormalDist
 
+from core.design import DesignGenerator
+from core.errors import TaskConfigurationError
 from tasks.base import BaseTask
 
 
 class Task(BaseTask):
+    """Oddball auditif Go/No-Go avec tons standards et déviants."""
+
     NAME = "oddball"
 
     def setup(self) -> None:
+        """Précharge les deux tons et le mapping de réponse."""
         audio = self.config["audio"]
 
         self.standard_frequency = float(audio["standard_frequency"])
@@ -35,6 +42,7 @@ class Task(BaseTask):
         )
 
     def instructions(self) -> str:
+        """Retourne les consignes générales de l’oddball auditif."""
         return (
             "ODDBALL AUDITIF\n\n"
             "Vous entendrez surtout des sons graves.\n"
@@ -46,6 +54,7 @@ class Task(BaseTask):
         )
 
     def block_instruction(self, block_index: int, block: dict) -> str:
+        """Retourne le rappel Go/No-Go affiché avant un bloc."""
         return (
             f"Bloc {block_index + 1}/{len(self.blocks)}\n\n"
             f"Son aigu : appuyez sur [{self.go_key}]\n"
@@ -53,36 +62,52 @@ class Task(BaseTask):
         )
 
     def build_trials(self, block: dict) -> list[dict]:
+        """Construit l’ordre standards/déviants et un SOA stratifié."""
         n = int(block["n_trials"])
         n_deviants = max(1, round(n * float(self.design["prop_deviant"])))
 
         sequence = [True] * n_deviants + [False] * (n - n_deviants)
 
-        for _ in range(500):
+        valid = False
+        for _ in range(2000):
             self.rng.shuffle(sequence)
+            starts_with_standards = not sequence[0] and (n < 2 or not sequence[1])
+            no_adjacent_deviants = all(
+                not (sequence[index - 1] and sequence[index])
+                for index in range(1, len(sequence))
+            )
+            if starts_with_standards and no_adjacent_deviants:
+                valid = True
+                break
 
-            if not sequence[0] and (n < 2 or not sequence[1]):
-                if all(
-                    not (sequence[index - 1] and sequence[index])
-                    for index in range(1, len(sequence))
-                ):
-                    break
+        if not valid:
+            raise TaskConfigurationError(
+                "Impossible de pseudo-randomiser l’Oddball sans déviants adjacents."
+            )
 
+        soas = DesignGenerator.stratified_jitter(
+            n,
+            float(self.design["soa_min"]),
+            float(self.design["soa_max"]),
+            self.rng,
+        )
         return [
             {
                 "is_deviant": is_deviant,
-                "soa": round(
-                    self.rng.uniform(
-                        float(self.design["soa_min"]),
-                        float(self.design["soa_max"]),
-                    ),
-                    4,
-                ),
+                "trial_type": "deviant" if is_deviant else "standard",
+                "soa": round(soa, 4),
             }
-            for is_deviant in sequence
+            for is_deviant, soa in zip(sequence, soas)
         ]
 
-    def run_trial(self, trial, block_index, trial_index, block) -> dict:
+    def run_trial(
+        self,
+        trial: dict[str, Any],
+        block_index: int,
+        trial_index: int,
+        block: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Joue un ton et classe la réponse selon la théorie de détection."""
         is_deviant = bool(trial["is_deviant"])
         sound_name = "deviant" if is_deviant else "standard"
 
@@ -148,6 +173,7 @@ class Task(BaseTask):
         )
 
     def print_summary(self) -> None:
+        """Affiche hit rate, fausses alarmes et d-prime."""
         records = self.writer.records
 
         if not records:
