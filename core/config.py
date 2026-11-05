@@ -92,6 +92,7 @@ class SessionSettings:
     screen_index: int = 0
     background_color: tuple[float, float, float] = (-1.0, -1.0, -1.0)
     quit_key: str = "escape"
+    operator_start_key: str = "return"
     end_screen_seconds: float = 3.0
 
     resolution: tuple[int, int] = (1920, 1080)
@@ -189,6 +190,7 @@ class SessionSettings:
             screen_index=int(screen_index) if screen_index is not None else int(project.get("default_screen", 0)),
             background_color=tuple(float(x) for x in display.get("background_color", [-1, -1, -1])),
             quit_key=str(project.get("quit_key", "escape")),
+            operator_start_key=str(project.get("operator_start_key", "return")),
             end_screen_seconds=float(project.get("end_screen_seconds", 3.0)),
             resolution=tuple(int(x) for x in display.get("resolution", [1920, 1080])),
             width_cm=float(display.get("width_cm", 53.0)),
@@ -227,6 +229,29 @@ class SessionSettings:
             mock_mode=bool(mock_mode) if mock_mode is not None else bool(project.get("mock_mode", False)),
             save_data=bool(save_data),
         )
+
+    def validate(self) -> None:
+        """Refuse les conflits de touches et les transports non configurés."""
+        if not self.operator_start_key or self.operator_start_key in {
+            self.trigger_key, self.quit_key, *self.responses.values()
+        }:
+            raise ValueError("La touche opérateur doit être distincte du trigger, des réponses et d'Escape.")
+        if self.quit_key in self.responses.values() or (
+            self.trigger_enabled and self.trigger_key in self.responses.values()
+        ):
+            raise ValueError("Les réponses ne doivent pas utiliser le trigger ou la touche d'arrêt.")
+        if self.trigger_source not in {"keyboard", "serial", "parallel"}:
+            raise ValueError("Source de trigger invalide.")
+        if self.markers_enabled and not self.mock_mode and self.marker_transport not in {"parallel", "serial"}:
+            raise ValueError("Marqueurs activés : configurer un transport parallèle ou série.")
+        if self.refresh_rate <= 0 or self.trigger_timeout_seconds <= 0:
+            raise ValueError("Fréquence écran et timeout du trigger doivent être positifs.")
+        if self.audio_schedule_lead_seconds < self.audio_minimum_schedule_lead_seconds:
+            raise ValueError("Le délai de programmation audio est inférieur au minimum requis.")
+        if self.trigger_enabled and self.trigger_source == "serial" and len(self.trigger_key.encode("ascii")) != 1:
+            raise ValueError("Le trigger série doit être un caractère ASCII unique.")
+        if self.trigger_enabled and self.trigger_source == "serial" and self.response_box_backend == "serial" and self.trigger_serial_port == self.response_box_serial_port:
+            raise ValueError("Le trigger et les réponses série doivent utiliser des ports distincts.")
 
     def with_hardware_overrides(
         self,

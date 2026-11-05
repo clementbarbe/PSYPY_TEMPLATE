@@ -12,6 +12,11 @@ class Task(BaseTask):
 
     NAME = "nback"
 
+    def setup_design(self) -> None:
+        """Prépare les alphabets pour la génération sans matériel."""
+        self.consonants = list(self.config["consonants"])
+        self.zero_targets = list(self.config["zero_back_targets"])
+
     def setup(self) -> None:
         """Crée le stimulus lettre et prépare les réponses cibles."""
         from psychopy import visual
@@ -27,8 +32,6 @@ class Task(BaseTask):
         self.go_key = self.settings.responses.get("go", "space")
         self.valid_keys = [self.go_key]
 
-        self.consonants = list(self.config["consonants"])
-        self.zero_targets = list(self.config["zero_back_targets"])
         self.markers = self.config.get("markers", {})
 
     def instructions(self) -> str:
@@ -40,7 +43,7 @@ class Task(BaseTask):
             f"2-back : appuyez sur [{self.go_key}] "
             "si la lettre est identique à celle d'il y a deux essais.\n\n"
             "Sinon : ne faites rien.\n\n"
-            "Appuyez sur une touche pour commencer."
+            "Attendez l'autorisation de l'expérimentateur."
         )
 
     def block_instruction(self, block_index: int, block: dict) -> str:

@@ -7,6 +7,7 @@ project:
   default_screen: 0
   mock_mode: false
   quit_key: escape
+  operator_start_key: return # Validation opérateur ; jamais t/5 ni une réponse.
   end_screen_seconds: 3.0
 
 display:

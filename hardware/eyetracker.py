@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import csv
+import base64
+import secrets
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +34,8 @@ class NullEyeTracker:
 class EyeLinkTracker:
     """Backend SR Research EyeLink via ``pylink``."""
 
+    _allocated_names: set[str] = set()
+
     def __init__(self, host: str, logger: Any) -> None:
         """Établit la connexion EyeLink au host configuré."""
         import pylink
@@ -41,6 +45,7 @@ class EyeLinkTracker:
         self._tracker = pylink.EyeLink(host)
         self._remote_filename: str | None = None
         self._local_stem: str | None = None
+        self._recording = False
         self.connected = True
 
     def message(self, message: str) -> None:
@@ -51,33 +56,60 @@ class EyeLinkTracker:
         """Ouvre un EDF et démarre l'enregistrement EyeLink."""
         # EyeLink impose un nom DOS court ; le stem BIDS complet reste côté PC.
         self._local_stem = Path(filename).stem
-        compact = "".join(char for char in self._local_stem if char.isalnum())
-        self._remote_filename = (compact[:8] or "EYEDATA").upper() + ".EDF"
+        self._remote_filename = self._new_remote_filename()
+        self.logger.info(f"EDF : {self._remote_filename} <-> {self._local_stem}")
         self._tracker.openDataFile(self._remote_filename)
-        self._tracker.startRecording(1, 1, 1, 1)
+        result = self._tracker.startRecording(1, 1, 1, 1)
+        if result not in (None, 0):
+            raise RuntimeError(f"EyeLink startRecording a échoué : {result}")
+        self._recording = True
+
+    @classmethod
+    def _new_remote_filename(cls) -> str:
+        """Alloue huit caractères alphanumériques indépendants du préfixe BIDS."""
+        while True:
+            name = base64.b32encode(secrets.token_bytes(5)).decode("ascii") + ".EDF"
+            if name not in cls._allocated_names:
+                cls._allocated_names.add(name)
+                return name
+
+    @property
+    def remote_filename(self) -> str | None:
+        """Expose la correspondance EDF à sauvegarder avec le run."""
+        return self._remote_filename
 
     def stop_and_download(self, output_dir: Path) -> Path | None:
         """Arrête l'EyeLink et récupère l'EDF dans le dossier fonctionnel."""
         if self._remote_filename is None:
             return None
-        try:
+        if self._recording:
             self._tracker.stopRecording()
-        except Exception:
-            pass
-        try:
-            self._tracker.closeDataFile()
-        except Exception:
-            pass
+            self._recording = False
+        self._tracker.setOfflineMode()
+        self._tracker.closeDataFile()
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         local_stem = self._local_stem or "eyetracker"
         destination = output_dir / f"{local_stem}_eyetrack.edf"
+        if destination.exists():
+            raise FileExistsError(f"EDF local déjà présent : {destination}")
         self._tracker.receiveDataFile(self._remote_filename, str(destination))
+        if not destination.exists() or destination.stat().st_size == 0:
+            raise OSError(f"EDF non récupéré : {self._remote_filename}")
+        self._remote_filename = None
         return destination
 
     def close(self) -> None:
         """Ferme la connexion EyeLink."""
-        self._tracker.close()
+        try:
+            if self._recording:
+                self._tracker.stopRecording()
+                self._recording = False
+            if self._remote_filename is not None:
+                self._tracker.setOfflineMode()
+                self._tracker.closeDataFile()
+        finally:
+            self._tracker.close()
 
 
 class TobiiTracker:
@@ -160,3 +192,4 @@ def create_eyetracker(settings: Any, logger: Any) -> Any:
     if backend == "tobii":
         return TobiiTracker(logger)
     raise ValueError(f"Backend eye-tracker inconnu : {backend}")
+

@@ -19,6 +19,13 @@ class Task(BaseTask):
     NAME = "stroop"
     PREGENERATE = True
 
+    def setup_design(self) -> None:
+        """Prépare mots et couleurs pour le même générateur en dry-run et en run."""
+        self.colors = dict(self.config["colors"])
+        self.color_words = dict(self.config["color_words"])
+        self.color_names = list(self.colors)
+        self.neutral_words = list(self.config["neutral_words"])
+
     def setup(self) -> None:
         """Crée les mots, mappings couleur-touche et guide visuel optionnel."""
         from psychopy import visual
@@ -86,56 +93,6 @@ class Task(BaseTask):
                     )
                 )
 
-    @classmethod
-    def dry_run(
-        cls,
-        task_config: dict[str, Any],
-        design_id: int,
-        seed: int | None = None,
-    ) -> None:
-        """Génère et valide complètement un design Stroop sans PsychoPy."""
-        super().dry_run(task_config, design_id, seed)
-
-        from random import Random
-
-        design = task_config["designs"][design_id]
-        rng = Random(seed)
-
-        colors = list(task_config["colors"])
-        words = task_config["color_words"]
-        neutrals = task_config["neutral_words"]
-
-        if design.get("paradigm") == "event":
-            blocks = [
-                build_event_trials(
-                    count=design["blocks"][0]["n_trials"],
-                    colors=colors,
-                    color_words=words,
-                    neutral_words=neutrals,
-                    rng=rng,
-                )
-            ]
-
-        else:
-            blocks = []
-
-            for block in design["blocks"]:
-                trials = build_condition_trials(
-                    condition=block["condition"],
-                    count=block["n_trials"],
-                    colors=colors,
-                    color_words=words,
-                    neutral_words=neutrals,
-                    rng=rng,
-                )
-
-                blocks.append(order_trials(trials, rng))
-
-        validate_sequence(
-            blocks,
-            event_related=design.get("paradigm") == "event",
-        )
-
     def instructions(self) -> str:
         """Retourne les consignes générales du Stroop."""
         return (
@@ -146,7 +103,7 @@ class Task(BaseTask):
             f"BLEU  : [{self.response_keys['bleu']}]\n"
             f"VERT  : [{self.response_keys['vert']}]\n\n"
             "Répondez vite et précisément.\n\n"
-            "Appuyez sur une touche pour commencer."
+            "Attendez l'autorisation de l'expérimentateur."
         )
 
     def build_all_trials(self) -> list[list[dict]]:

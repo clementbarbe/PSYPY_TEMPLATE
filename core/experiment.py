@@ -10,6 +10,7 @@ from core.clock import ExperimentClock
 from core.config import SessionSettings
 from core.data import DataWriter, OutputPaths
 from core.logging import ExperimentLogger
+from core.provenance import session_metadata
 from hardware import HardwareManager
 from hardware.screen import create_psychopy_window
 
@@ -25,13 +26,21 @@ class Experiment:
     def __init__(self, settings: SessionSettings) -> None:
         """Initialise chemins, logger, horloge, fenêtre et hardware du run."""
         self.settings = settings
+        settings.validate()
+        self.logger = self.win = self.hardware = None
+        self._closed = False
         self.paths = OutputPaths(settings)
         self.paths.ensure()
-        self.logger = ExperimentLogger(self.paths.log_dir)
-        self.clock = ExperimentClock()
-        self.win = create_psychopy_window(settings)
-        self.hardware = HardwareManager(settings, self.clock, self.logger)
-        self._closed = False
+        try:
+            self.logger = ExperimentLogger(self.paths.log_dir)
+            self.metadata = session_metadata(settings)
+            self.clock = ExperimentClock()
+            self.win = create_psychopy_window(settings)
+            self.metadata["measured_refresh_rate"] = self.win.measured_refresh_rate
+            self.hardware = HardwareManager(settings, self.clock, self.logger)
+        except BaseException:
+            self.close()
+            raise
         self.logger.info(
             "Session initialisée | "
             f"sub={settings.participant} | ses={settings.session} | "
@@ -56,7 +65,8 @@ class Experiment:
             logger=self.logger,
             enabled=self.settings.save_data,
         )
-        task = task_class(
+        try:
+            task = task_class(
             win=self.win,
             clock=self.clock,
             settings=self.settings,
@@ -68,8 +78,11 @@ class Experiment:
             design_id=design_id,
             run=run,
             seed=seed,
-        )
-        return task.run()
+            session_metadata=self.metadata,
+            )
+            return task.run()
+        finally:
+            writer.close()
 
     def close(self) -> None:
         """Ferme hardware, fenêtre PsychoPy et logger de manière idempotente."""
@@ -77,13 +90,16 @@ class Experiment:
             return
         self._closed = True
         try:
-            self.hardware.close()
+            if self.hardware is not None:
+                self.hardware.close()
         finally:
             try:
-                self.win.close()
+                if self.win is not None:
+                    self.win.close()
             except Exception:
                 pass
-            self.logger.close()
+            if self.logger is not None:
+                self.logger.close()
 
     def __enter__(self) -> "Experiment":
         """Permet ``with Experiment(settings) as experiment``."""

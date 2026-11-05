@@ -33,6 +33,7 @@ designs:
   1:
     name: "Compact 0-back vs 2-back"
     paradigm: block
+    final_rest_duration: 10.0
     rest_duration: 6.0
     stim_duration: 0.5
     isi_duration: 1.5
@@ -52,6 +53,7 @@ designs:
   2:
     name: "Balanced 0-back vs 2-back"
     paradigm: block
+    final_rest_duration: 10.0
     rest_duration: 7.0
     stim_duration: 0.5
     isi_duration: 1.5
@@ -73,6 +75,7 @@ designs:
   3:
     name: "Power 0-back vs 2-back"
     paradigm: block
+    final_rest_duration: 10.0
     rest_duration: 8.0
     stim_duration: 0.5
     isi_duration: 1.5
@@ -96,6 +99,7 @@ designs:
   4:
     name: "Research 0-back vs 2-back"
     paradigm: block
+    final_rest_duration: 10.0
     rest_duration: 10.0
     stim_duration: 0.5
     isi_duration: 1.5

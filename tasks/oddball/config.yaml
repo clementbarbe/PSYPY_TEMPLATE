@@ -17,6 +17,7 @@ designs:
   1:
     name: "Standard 80/20"
     paradigm: event
+    final_rest_duration: 10.0
     rest_duration: 12.0
     instruction_duration: 3.0
     pre_block_fixation: 1.0
@@ -31,6 +32,7 @@ designs:
   2:
     name: "Dense 80/20"
     paradigm: event
+    final_rest_duration: 10.0
     rest_duration: 10.0
     instruction_duration: 3.0
     pre_block_fixation: 1.0
@@ -44,6 +46,7 @@ designs:
   3:
     name: "Court 80/20"
     paradigm: event
+    final_rest_duration: 10.0
     rest_duration: 8.0
     instruction_duration: 3.0
     pre_block_fixation: 1.0
@@ -56,6 +59,7 @@ designs:
   4:
     name: "70/30"
     paradigm: event
+    final_rest_duration: 10.0
     rest_duration: 10.0
     instruction_duration: 3.0
     pre_block_fixation: 1.0

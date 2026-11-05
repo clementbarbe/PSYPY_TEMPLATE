@@ -34,4 +34,17 @@ def create_psychopy_window(settings: Any) -> Any:
             -1.0 if settings.flip_horizontal else 1.0,
             -1.0 if settings.flip_vertical else 1.0,
         ]
+    try:
+        win.measured_refresh_rate = win.getActualFrameRate(nIdentical=20, nMaxFrames=240, nWarmUpFrames=30)
+        if settings.trigger_enabled and not settings.mock_mode:
+            measured = win.measured_refresh_rate
+            if measured is None or abs(measured - settings.refresh_rate) > settings.refresh_rate * 0.03:
+                raise RuntimeError(
+                    f"Fréquence écran mesurée {measured!r} Hz ; attendue {settings.refresh_rate} Hz. "
+                    "Vérifier l'écran choisi et le profil du poste."
+                )
+        win.refreshThreshold = 1.5 / (win.measured_refresh_rate or settings.refresh_rate)
+    except BaseException:
+        win.close()
+        raise
     return win

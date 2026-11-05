@@ -50,7 +50,7 @@ class Task(BaseTask):
             f"Appuyez sur [{self.go_key}] UNIQUEMENT\n"
             "pour les sons aigus.\n\n"
             "Fixez la croix au centre de l'écran.\n\n"
-            "Appuyez sur une touche pour commencer."
+            "Attendez l'autorisation de l'expérimentateur."
         )
 
     def block_instruction(self, block_index: int, block: dict) -> str:
@@ -64,26 +64,17 @@ class Task(BaseTask):
     def build_trials(self, block: dict) -> list[dict]:
         """Construit l’ordre standards/déviants et un SOA stratifié."""
         n = int(block["n_trials"])
-        n_deviants = max(1, round(n * float(self.design["prop_deviant"])))
-
-        sequence = [True] * n_deviants + [False] * (n - n_deviants)
-
-        valid = False
-        for _ in range(2000):
-            self.rng.shuffle(sequence)
-            starts_with_standards = not sequence[0] and (n < 2 or not sequence[1])
-            no_adjacent_deviants = all(
-                not (sequence[index - 1] and sequence[index])
-                for index in range(1, len(sequence))
-            )
-            if starts_with_standards and no_adjacent_deviants:
-                valid = True
-                break
-
-        if not valid:
+        ratio = float(self.design["prop_deviant"])
+        n_deviants = max(1, round(n * ratio))
+        # Réserver deux standards initiaux puis répartir les déviants dans
+        # des positions non adjacentes, sans recherche aléatoire par rejet.
+        if not 0 < ratio < 1 or n_deviants > (n - 1) // 2:
             raise TaskConfigurationError(
                 "Impossible de pseudo-randomiser l’Oddball sans déviants adjacents."
             )
+        compressed = sorted(self.rng.sample(range(2, n - n_deviants + 1), n_deviants))
+        positions = {value + index for index, value in enumerate(compressed)}
+        sequence = [index in positions for index in range(n)]
 
         soas = DesignGenerator.stratified_jitter(
             n,

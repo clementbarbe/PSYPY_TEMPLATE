@@ -43,6 +43,7 @@ designs:
   1:
     name: "Mini-blocs 24x4"
     paradigm: block
+    final_rest_duration: 10.0
     fixation_duration: 0.5
     stim_duration: 1.2
     iti_duration: 0.3
@@ -78,6 +79,7 @@ designs:
   2:
     name: "Mini-blocs 18x7"
     paradigm: block
+    final_rest_duration: 10.0
     fixation_duration: 0.5
     stim_duration: 1.2
     iti_duration: 0.3
@@ -107,6 +109,7 @@ designs:
   3:
     name: "Blocs longs 9x15"
     paradigm: block
+    final_rest_duration: 10.0
     fixation_duration: 0.5
     stim_duration: 1.2
     iti_duration: 0.3
@@ -127,6 +130,7 @@ designs:
   4:
     name: "Event-related 75"
     paradigm: event
+    final_rest_duration: 10.0
     fixation_duration: 0.5
     stim_duration: 1.2
     iti_min: 1.5

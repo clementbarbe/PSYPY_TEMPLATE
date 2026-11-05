@@ -103,6 +103,7 @@ class DataWriter:
         self.incremental_path = self.output_dir / f"{self.stem}_events.inprogress.tsv"
         self.final_path = self.output_dir / f"{self.stem}_events.tsv"
         self.sidecar_path = self.output_dir / f"{self.stem}_events.json"
+        self.run_metadata_path = self.output_dir / f"{self.stem}_run.json"
         self._file = None
         self._writer = None
         self._closed = False
@@ -187,6 +188,19 @@ class DataWriter:
             return
         self._closed = True
         self._close_incremental_handle()
+
+    def write_run_metadata(self, metadata: dict[str, Any]) -> Path | None:
+        """Conserve les paramètres et l'état du run, même sans essai terminé."""
+        if not self.enabled:
+            return None
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        temporary = self.run_metadata_path.with_suffix(".json.tmp")
+        with temporary.open("w", encoding="utf-8") as stream:
+            json.dump(metadata, stream, ensure_ascii=False, indent=2, default=str)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, self.run_metadata_path)
+        return self.run_metadata_path
 
     def _open_incremental_append(self) -> None:
         """Ouvre le fichier de secours en append après création de son en-tête."""

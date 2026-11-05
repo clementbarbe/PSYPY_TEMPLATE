@@ -44,7 +44,7 @@ class Task(BaseTask):
             f"Gauche : [{self.left_key}]\n"
             f"Droite : [{self.right_key}]\n\n"
             "Répondez vite et précisément.\n\n"
-            "Appuyez sur une touche pour commencer."
+            "Attendez l'autorisation de l'expérimentateur."
         )
 
     def block_instruction(self, block_index: int, block: dict) -> str | None:

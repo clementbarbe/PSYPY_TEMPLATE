@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import Any
-import time
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -83,7 +82,7 @@ class SerialResponseBox:
             except UnicodeDecodeError:
                 continue
             if name and (allowed is None or name in allowed):
-                events.append(ResponseEvent(name=name, rt=float(self._clock.time)))
+                events.append(ResponseEvent(name=name, rt=float(self._clock.raw_time)))
         return events
 
     def close(self) -> None:

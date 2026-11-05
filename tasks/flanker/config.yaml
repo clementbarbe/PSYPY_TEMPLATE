@@ -12,6 +12,7 @@ designs:
   1:
     name: "Blocs congruent vs incongruent"
     paradigm: block
+    final_rest_duration: 10.0
     rest_duration: 12.0
     stim_duration: 1.5
     isi_min: 1.0
@@ -29,6 +30,7 @@ designs:
   2:
     name: "Event-related jittered"
     paradigm: event
+    final_rest_duration: 10.0
     rest_duration: 15.0
     stim_duration: 1.5
     isi_min: 2.0
@@ -41,6 +43,7 @@ designs:
   3:
     name: "Mini-blocs hybrides"
     paradigm: block
+    final_rest_duration: 10.0
     rest_duration: 12.0
     stim_duration: 1.5
     isi_min: 1.0
@@ -64,6 +67,7 @@ designs:
   4:
     name: "Mini-blocs courts"
     paradigm: block
+    final_rest_duration: 10.0
     rest_duration: 10.0
     stim_duration: 1.5
     isi_min: 1.0

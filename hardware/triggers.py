@@ -11,10 +11,12 @@ from core.errors import AbortExperiment
 class TriggerReceiver:
     """Attend un trigger clavier, série ou parallèle."""
 
-    def __init__(self, settings: Any, logger: Any) -> None:
+    def __init__(self, settings: Any, logger: Any, clock: Any = None) -> None:
         """Initialise le backend de réception configuré."""
         self.settings = settings
         self.logger = logger
+        self.clock = clock
+        self.last_trigger_time: float | None = None
         self._serial = None
         self._parallel = None
         self._open_backend()
@@ -53,25 +55,36 @@ class TriggerReceiver:
         deadline = time.monotonic() + self.settings.trigger_timeout_seconds
         source = self.settings.trigger_source.lower()
         response_box.clear_events()
+        self.last_trigger_time = None
+        if source == "serial" and self._serial is not None:
+            self._serial.reset_input_buffer()
+        previous_high = bool(self._parallel.readPin(self.settings.trigger_parallel_pin)) if source == "parallel" else False
 
         while time.monotonic() < deadline:
+            keys = response_box.get_keys(
+                [self.settings.trigger_key, quit_key] if source == "keyboard" else [quit_key],
+                wait_release=False,
+            )
+            if any(key.name == quit_key for key in keys):
+                raise AbortExperiment("Interruption pendant l'attente du trigger.")
             if source == "keyboard":
-                keys = response_box.get_keys(
-                    [self.settings.trigger_key, quit_key], wait_release=False
-                )
                 for key in keys:
-                    if key.name == quit_key:
-                        raise AbortExperiment("Interruption pendant l'attente du trigger.")
                     if key.name == self.settings.trigger_key:
+                        self.last_trigger_time = float(key.rt)
                         return True
             elif source == "serial" and self._serial is not None:
                 if self._serial.in_waiting:
-                    self._serial.read(1)
-                    return True
+                    data = self._serial.read(1)
+                    if data == self.settings.trigger_key.encode("ascii"):
+                        self.last_trigger_time = self.clock.raw_time
+                        return True
             elif source == "parallel" and self._parallel is not None:
                 pin = self.settings.trigger_parallel_pin
-                if bool(self._parallel.readPin(pin)):
+                high = bool(self._parallel.readPin(pin))
+                if high and not previous_high:
+                    self.last_trigger_time = self.clock.raw_time
                     return True
+                previous_high = high
             time.sleep(0.001)
         return False
 
@@ -121,16 +134,17 @@ class MarkerOutput:
         """Envoie un code 8 bits sans interrompre la tâche en cas d'erreur I/O."""
         if self._device is None:
             return
-        code = int(code) & 0xFF
-        try:
-            if self.settings.marker_transport.lower() == "parallel":
-                self._device.setData(code)
+        code = int(code)
+        if not 1 <= code <= 255:
+            raise ValueError("Un marqueur doit être compris entre 1 et 255.")
+        if self.settings.marker_transport.lower() == "parallel":
+            self._device.setData(code)
+            try:
                 time.sleep(self.settings.marker_pulse_seconds)
+            finally:
                 self._device.setData(0)
-            else:
-                self._device.write(bytes([code]))
-        except Exception as exc:
-            self.logger.warning(f"Erreur marqueur {code}: {exc}")
+        elif self._device.write(bytes([code])) != 1:
+            raise OSError(f"Marqueur série {code} non transmis.")
 
     def close(self) -> None:
         """Remet le TTL à zéro puis ferme le transport si possible."""
